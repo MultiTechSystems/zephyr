@@ -1,0 +1,5 @@
+# Multitech xDot boards configuration
+
+
+config BOARD_MULTITECH_XDOT
+	select SOC_MAX32670

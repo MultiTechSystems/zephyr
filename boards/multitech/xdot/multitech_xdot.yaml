@@ -1,0 +1,20 @@
+identifier: multitech_xdot 
+name: multitech_xdot
+vendor: multitech
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - gpio
+  - serial
+  - trng
+  - i2c
+  - dma
+  - watchdog
+  - spi
+  - lora
+ram: 160
+flash: 384
