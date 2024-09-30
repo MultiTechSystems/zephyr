@@ -144,23 +144,19 @@ static ALWAYS_INLINE void clk_init(void)
 #endif
 }
 
-static int ke1xz_init(void)
+void soc_early_init_hook(void)
 
 {
 	/* Initialize system clocks and PLL */
 	clk_init();
-
-	return 0;
 }
 
-#ifdef CONFIG_PLATFORM_SPECIFIC_INIT
+#ifdef CONFIG_SOC_RESET_HOOK
 
-void z_arm_platform_init(void)
+void soc_reset_hook(void)
 {
 	/* SystemInit is provided by the NXP SDK */
 	SystemInit();
 }
 
-#endif /* CONFIG_PLATFORM_SPECIFIC_INIT */
-
-SYS_INIT(ke1xz_init, PRE_KERNEL_1, 0);
+#endif /* CONFIG_SOC_RESET_HOOK */

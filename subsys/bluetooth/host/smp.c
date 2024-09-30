@@ -20,7 +20,7 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/debug/stack.h>
 #include <zephyr/kernel.h>
-#include <zephyr/net/buf.h>
+#include <zephyr/net_buf.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/byteorder.h>
@@ -1258,8 +1258,8 @@ static uint8_t smp_br_pairing_rsp(struct bt_smp_br *smp, struct net_buf *buf)
 	smp->local_dist &= rsp->init_key_dist;
 	smp->remote_dist &= rsp->resp_key_dist;
 
-	smp->local_dist &= SEND_KEYS_SC;
-	smp->remote_dist &= RECV_KEYS_SC;
+	smp->local_dist &= BR_SEND_KEYS_SC;
+	smp->remote_dist &= BR_RECV_KEYS_SC;
 
 	/* Peripheral distributes its keys first */
 
@@ -5232,11 +5232,13 @@ static int smp_f6_test(void)
 	int err;
 
 	err = bt_crypto_f6(w, n1, n2, r, io_cap, &a1, &a2, res);
-	if (err)
+	if (err) {
 		return err;
+	}
 
-	if (memcmp(res, exp, 16))
+	if (memcmp(res, exp, 16)) {
 		return -EINVAL;
+	}
 
 	return 0;
 }

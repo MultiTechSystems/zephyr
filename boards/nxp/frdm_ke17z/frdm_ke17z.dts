@@ -30,6 +30,8 @@
 	chosen {
 		zephyr,sram = &sram_u;
 		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,uart-mcumgr = &lpuart0;
 		zephyr,console = &lpuart0;
 		zephyr,shell-uart = &lpuart0;
 	};
@@ -102,6 +104,7 @@
 &adc0 {
 	status = "okay";
 	sample-time = <12>;
+	vref-mv = <3300>;
 	pinctrl-0 = <&adc0_default>;
 	pinctrl-names = "default";
 };

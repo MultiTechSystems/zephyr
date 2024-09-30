@@ -60,6 +60,7 @@ static const struct wifi_mgmt_ops mgmt_ops = {
 	.iface_status = supplicant_status,
 #ifdef CONFIG_NET_STATISTICS_WIFI
 	.get_stats = supplicant_get_stats,
+	.reset_stats = supplicant_reset_stats,
 #endif
 	.set_power_save = supplicant_set_power_save,
 	.set_twt = supplicant_set_twt,
@@ -69,6 +70,7 @@ static const struct wifi_mgmt_ops mgmt_ops = {
 	.filter = supplicant_filter,
 	.channel = supplicant_channel,
 	.set_rts_threshold = supplicant_set_rts_threshold,
+	.get_rts_threshold = supplicant_get_rts_threshold,
 #ifdef CONFIG_WIFI_NM_WPA_SUPPLICANT_WNM
 	.btm_query = supplicant_btm_query,
 #endif
@@ -86,8 +88,21 @@ static const struct wifi_mgmt_ops mgmt_ops = {
 };
 
 DEFINE_WIFI_NM_INSTANCE(wifi_supplicant, &mgmt_ops);
+
 #ifdef CONFIG_WIFI_NM_HOSTAPD_AP
-DEFINE_WIFI_NM_INSTANCE(hostapd, &mgmt_ops);
+static const struct wifi_mgmt_ops mgmt_ap_ops = {
+	.set_btwt = supplicant_set_btwt,
+	.ap_enable = supplicant_ap_enable,
+	.ap_disable = supplicant_ap_disable,
+	.ap_sta_disconnect = supplicant_ap_sta_disconnect,
+	.ap_bandwidth = supplicant_ap_bandwidth,
+#ifdef CONFIG_WIFI_NM_WPA_SUPPLICANT_DPP
+	.dpp_dispatch = hapd_dpp_dispatch,
+#endif /* CONFIG_WIFI_NM_WPA_SUPPLICANT_DPP */
+	.ap_config_params = supplicant_ap_config_params,
+};
+
+DEFINE_WIFI_NM_INSTANCE(hostapd, &mgmt_ap_ops);
 #endif
 
 #define WRITE_TIMEOUT 100 /* ms */
@@ -119,6 +134,9 @@ static struct hapd_global hglobal;
 #ifndef HOSTAPD_CLEANUP_INTERVAL
 #define HOSTAPD_CLEANUP_INTERVAL 10
 #endif /* HOSTAPD_CLEANUP_INTERVAL */
+
+static void zephyr_hostap_ctrl_iface_msg_cb(void *ctx, int level, enum wpa_msg_type type,
+					    const char *txt, size_t len);
 
 static int hostapd_periodic_call(struct hostapd_iface *iface, void *ctx)
 {
@@ -319,6 +337,9 @@ static int add_interface(struct supplicant_context *ctx, struct net_if *iface)
 		supplicant_generate_state_event(ifname, NET_EVENT_SUPPLICANT_CMD_READY, 0);
 	}
 
+#ifdef CONFIG_WIFI_NM_HOSTAPD_AP
+	wpa_msg_register_cb(zephyr_hostap_ctrl_iface_msg_cb);
+#endif
 	ret = 0;
 
 out:
@@ -486,6 +507,12 @@ static void iface_cb(struct net_if *iface, void *user_data)
 	if (!net_if_is_wifi(iface)) {
 		return;
 	}
+
+#ifdef CONFIG_WIFI_NM_HOSTAPD_AP
+	if (wifi_nm_iface_is_sap(iface)) {
+		return;
+	}
+#endif
 
 	if (!net_if_is_admin_up(iface)) {
 		return;
@@ -874,6 +901,7 @@ struct hostapd_config *hostapd_config_read2(const char *fname)
 	conf->ht_op_mode_fixed  = 1;
 	conf->ieee80211ac       = 1;
 	conf->vht_oper_chwidth  = CHANWIDTH_USE_HT;
+	conf->vht_capab |= VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MAX;
 	conf->ieee80211ax       = 1;
 	conf->he_oper_chwidth   = CHANWIDTH_USE_HT;
 	conf->he_phy_capab.he_su_beamformer = 0;
@@ -938,6 +966,8 @@ static struct hostapd_iface *hostapd_interface_init(struct hapd_interfaces *inte
 		hostapd_interface_deinit_free(iface);
 		return NULL;
 	}
+
+	iface->bss[0]->is_hostapd = 1;
 
 	return iface;
 }
@@ -1037,6 +1067,41 @@ static void zephyr_hostapd_init(struct supplicant_context *ctx)
 out:
 	return;
 }
+
+static const char *zephyr_hostap_msg_ifname_cb(void *ctx)
+{
+	if (ctx == NULL) {
+		return NULL;
+	}
+
+	if ((*((int *)ctx)) == 0) {
+		struct wpa_supplicant *wpa_s = ctx;
+
+		return wpa_s->ifname;
+	}
+
+	struct hostapd_data *hapd = ctx;
+
+	if (hapd && hapd->conf) {
+		return hapd->conf->iface;
+	}
+
+	return NULL;
+}
+
+static void zephyr_hostap_ctrl_iface_msg_cb(void *ctx, int level, enum wpa_msg_type type,
+					    const char *txt, size_t len)
+{
+	if (ctx == NULL) {
+		return;
+	}
+
+	if ((*((int *)ctx)) == 0) {
+		wpa_supplicant_msg_send(ctx, level, type, txt, len);
+	} else {
+		hostapd_msg_send(ctx, level, type, txt, len);
+	}
+}
 #endif
 
 static void handler(void)
@@ -1092,6 +1157,7 @@ static void handler(void)
 
 #ifdef CONFIG_WIFI_NM_HOSTAPD_AP
 	zephyr_hostapd_init(ctx);
+	wpa_msg_register_ifname_cb(zephyr_hostap_msg_ifname_cb);
 #endif
 
 	(void)wpa_supplicant_run(ctx->supplicant);

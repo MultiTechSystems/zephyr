@@ -20,6 +20,7 @@
 		zephyr,console = &uart9;
 		zephyr,shell-uart = &uart9;
 		zephyr,entropy = &trng;
+		zephyr,flash-controller = &flash1;
 	};
 
 	leds {
@@ -68,8 +69,8 @@
 };
 
 &sciclk {
-	clk_src = <RA_CLOCK_SOURCE_PLL1P>;
-	clk_div = <RA_SCI_CLOCK_DIV_4>;
+	clk-src = <RA_CLOCK_SOURCE_PLL1P>;
+	clk-div = <RA_SCI_CLOCK_DIV_4>;
 	status = "okay";
 };
 
@@ -103,4 +104,23 @@
 
 &trng {
 	status = "okay";
+};
+
+&spi0 {
+	pinctrl-0 = <&spi0_default>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&flash1 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		storage_partition: partition@0 {
+			label = "storage";
+			reg = <0X0 DT_SIZE_K(12)>;
+		};
+	};
 };

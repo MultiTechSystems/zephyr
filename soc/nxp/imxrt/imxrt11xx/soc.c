@@ -334,9 +334,9 @@ static ALWAYS_INLINE void clock_init(void)
 	rootCfg.div = 2;
 	CLOCK_SetRootClock(kCLOCK_Root_Bus, &rootCfg);
 #elif defined(CONFIG_SOC_MIMXRT1166_CM7)
-	/* Configure root bus clock at 200M */
-	rootCfg.mux = kCLOCK_BUS_ClockRoot_MuxSysPll1Div5;
-	rootCfg.div = 1;
+	/* Configure root bus clock at 198M */
+	rootCfg.mux = kCLOCK_BUS_ClockRoot_MuxSysPll2Pfd3;
+	rootCfg.div = 2;
 	CLOCK_SetRootClock(kCLOCK_Root_Bus, &rootCfg);
 #endif
 
@@ -729,8 +729,8 @@ static int imxrt_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_PLATFORM_SPECIFIC_INIT
-void z_arm_platform_init(void)
+#ifdef CONFIG_SOC_RESET_HOOK
+void soc_reset_hook(void)
 {
 	SystemInit();
 

@@ -4235,6 +4235,14 @@
 #define DT_INST_REG_SIZE(inst) DT_INST_REG_SIZE_BY_IDX(inst, 0)
 
 /**
+ * @brief Get a `DT_DRV_COMPAT`'s number of interrupts
+ *
+ * @param inst instance number
+ * @return number of interrupts
+ */
+#define DT_INST_NUM_IRQS(inst) DT_NUM_IRQS(DT_DRV_INST(inst))
+
+/**
  * @brief Get a `DT_DRV_COMPAT` interrupt level
  *
  * @param inst instance number
@@ -4482,6 +4490,7 @@
  * @brief Check if any device node with status `okay` has a given
  *        property.
  *
+ * @param compat lowercase-and-underscores devicetree compatible
  * @param prop lowercase-and-underscores property name
  *
  * Example devicetree overlay:

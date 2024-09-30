@@ -19,7 +19,7 @@
 #include <zephyr/bluetooth/iso.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/kernel.h>
-#include <zephyr/net/buf.h>
+#include <zephyr/net_buf.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/sys/util.h>
@@ -685,7 +685,12 @@ static int common_init(void)
 
 	printk("Bluetooth initialized\n");
 
-	bt_bap_scan_delegator_register_cb(&scan_delegator_cb);
+	err = bt_bap_scan_delegator_register(&scan_delegator_cb);
+	if (err) {
+		FAIL("Scan delegator register failed (err %d)\n", err);
+		return err;
+	}
+
 	bt_le_per_adv_sync_cb_register(&pa_sync_cb);
 
 	err = bt_le_adv_start(BT_LE_ADV_CONN_ONE_TIME, ad, AD_SIZE, NULL, 0);

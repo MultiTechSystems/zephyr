@@ -21,14 +21,26 @@ Build System
 Kernel
 ******
 
+* Removed the deprecated :kconfig:option:`CONFIG_MP_NUM_CPUS`, application should be updated to use
+  :kconfig:option:`CONFIG_MP_MAX_NUM_CPUS` instead.
+
 Boards
 ******
 
 * :ref:`native_posix<native_posix>` has been deprecated in favour of
   :ref:`native_sim<native_sim>` (:github:`76898`).
+* Nordic nRF53 and nRF91 based boards can use the common devicetree overlays in ``dts/common/nordic``
+  to define default flash and ram partitioning based on TF-M.
 
 * STM32WBA: The command used for fetching blobs required to build ble applications is now
-  `west blobs fetch hal_stm32` instead of `west blobs fetch stm32`.
+  ``west blobs fetch hal_stm32`` instead of ``west blobs fetch stm32``.
+
+STM32
+=====
+
+* On all official STM32 boards, ``west flash`` selects STM32CubeProgrammer as the default west runner.
+  If you want to enforce the selection of another runner like OpenOCD or pyOCD for flashing, you should
+  specify it using the west ``--runner`` or ``-r`` option. (:github:`75284`)
 
 Modules
 *******
@@ -38,12 +50,45 @@ Mbed TLS
 
 * The Kconfig options ``CONFIG_MBEDTLS_TLS_VERSION_1_0`` and ``CONFIG_MBEDTLS_TLS_VERSION_1_1``
   have been removed because Mbed TLS doesn't support TLS 1.0 and 1.1 anymore since v3.0. (:github:`76833`)
+* The following Kconfig symbols were renamed (:github:`76408`):
+  * ``CONFIG_MBEDTLS_ENTROPY_ENABLED`` is now :kconfig:option:`CONFIG_MBEDTLS_ENTROPY_C`,
+  * ``CONFIG_MBEDTLS_ZEPHYR_ENTROPY`` is now :kconfig:option:`CONFIG_MBEDTLS_ENTROPY_POLL_ZEPHYR`.
+
+* The Kconfig option ``CONFIG_MBEDTLS_SSL_EXPORT_KEYS`` was removed because the
+  corresponding build symbol was removed in Mbed TLS 3.1.0 and is now assumed to
+  be enabled. (:github:`77657`)
 
 Trusted Firmware-M
 ==================
 
+* The security counter used for the hardware rollback protection now comes explicitly from
+  :kconfig:option:`CONFIG_TFM_IMAGE_SECURITY_COUNTER`, instead of being automatically determined from
+  the image version. This has been changed as the implicit counter calculation is incompatible with
+  versions larger than ``0.0.1024`` (:github:`78128`).
+
 LVGL
 ====
+
+zcbor
+=====
+
+* Updated the zcbor library to version 0.9.0.
+  Full release notes at https://github.com/NordicSemiconductor/zcbor/blob/0.9.0/RELEASE_NOTES.md
+  Migration guide at https://github.com/NordicSemiconductor/zcbor/blob/0.9.0/MIGRATION_GUIDE.md
+  Migration guide copied here:
+
+  * ``zcbor_simple_*()`` functions have been removed to avoid confusion about their use.
+    They are still in the C file because they are used by other functions.
+    Instead, use the specific functions for the currently supported simple values, i.e.
+    ``zcbor_bool_*()``, ``zcbor_nil_*()``, and ``zcbor_undefined_*()``.
+    If a removed variant is strictly needed, add your own forward declaration in your code.
+
+  * Code generation naming:
+
+    * More C keywords are now capitalized to avoid naming collision.
+      You might have to capitalize some instances if your code was generated to have those names.
+
+    * A fix was made to the naming of bstr elements with a .size specifier, which might mean that these elements change name in your code when you regenerate.
 
 Device Drivers and Devicetree
 *****************************
@@ -62,6 +107,53 @@ Device Drivers and Devicetree
   their driver API, users of these devices should ensure they pass appropriate values to
   :c:func:`gpio_pin_set`. (:github:`65797`)
 
+Clock control
+=============
+
+* LFXO/HFXO (High/Low Frequency Crystal Oscillator) present in nRF53 series can
+  now be configured using devicetree. The Kconfig options
+  :kconfig:option:`CONFIG_SOC_ENABLE_LFXO`,
+  :kconfig:option:`CONFIG_SOC_LFXO_CAP_EXTERNAL`,
+  :kconfig:option:`CONFIG_SOC_LFXO_CAP_INT_6PF`,
+  :kconfig:option:`CONFIG_SOC_LFXO_CAP_INT_7PF`,
+  :kconfig:option:`CONFIG_SOC_LFXO_CAP_INT_9PF`,
+  :kconfig:option:`CONFIG_SOC_HFXO_CAP_DEFAULT`,
+  :kconfig:option:`CONFIG_SOC_HFXO_CAP_EXTERNAL`,
+  :kconfig:option:`CONFIG_SOC_HFXO_CAP_INTERNAL` and
+  :kconfig:option:`CONFIG_SOC_HFXO_CAP_INT_VALUE_X2` have been deprecated.
+
+  LFXO can now be configured like this:
+
+  .. code-block:: devicetree
+
+     /* use external capacitors */
+     &lfxo {
+           load-capacitors = "external";
+     };
+
+     /* use internal capacitors (value needs to be selected: 6, 7, 9pF)
+     &lfxo {
+           load-capacitors = "internal";
+           load-capacitance-picofarad = <...>;
+     };
+
+  HFXO can now be configured like this:
+
+  .. code-block:: devicetree
+
+     /* use external capacitors */
+     &hfxo {
+           load-capacitors = "external";
+     };
+
+     /* use internal capacitors (value needs to be selected: 7pF...20pF in 0.5pF
+      * steps, units: femtofarads)
+      */
+     &hfxo {
+           load-capacitors = "internal";
+           load-capacitance-femtofarad = <...>;
+     };
+
 Controller Area Network (CAN)
 =============================
 
@@ -74,9 +166,12 @@ Enhanced Serial Peripheral Interface (eSPI)
 GNSS
 ====
 
- * The u-blox M10 driver has been renamed to M8 as it only supports M8 based devices.
-   Existing devicetree compatibles should be updated to :dtcompatible:`u-blox,m8`, and Kconfig
-   symbols swapped to :kconfig:option:`CONFIG_GNSS_U_BLOX_M8`.
+* The u-blox M10 driver has been renamed to M8 as it only supports M8 based devices.
+  Existing devicetree compatibles should be updated to :dtcompatible:`u-blox,m8`, and Kconfig
+  symbols swapped to :kconfig:option:`CONFIG_GNSS_U_BLOX_M8`.
+
+* The APIs :c:func:`gnss_set_periodic_config` and :c:func:`gnss_get_periodic_config` have
+  been removed. (:github:`76392`)
 
 Input
 =====
@@ -175,6 +270,35 @@ Bluetooth Audio
   This needs to be added to all instances of VCP Volume Renderer callback functions defined.
   (:github:`76992`)
 
+* The Unicast Server has a new registration function :c:func:`bt_bap_unicast_server_register` which
+  takes a :c:struct:`bt_bap_unicast_server_register_param` as argument. This allows the Unicast
+  Server to dynamically register Source and Sink ASE count at runtime. The old
+  :kconfig:option:`CONFIG_BT_ASCS_ASE_SRC_COUNT` and :kconfig:option:`CONFIG_BT_ASCS_ASE_SNK_COUNT`
+  has been renamed to :kconfig:option:`CONFIG_BT_ASCS_MAX_ASE_SRC_COUNT` and
+  :kconfig:option:`CONFIG_BT_ASCS_MAX_ASE_SNK_COUNT` to reflect that they now serve as a
+  compile-time maximum configuration of ASEs to be used.
+  :c:func:`bt_bap_unicast_server_register` needs to be called once before using the Unicast Server,
+  and more specfically prior to calling :c:func:`bt_bap_unicast_server_register_cb` for the first
+  time. It does not need to be called again until the new function
+  :c:func:`bt_bap_unicast_server_unregister` has been called.
+  (:github:`76632`)
+
+* The Coordinated Set Coordinator functions :c:func:`bt_csip_set_coordinator_lock` and
+  :c:func:`bt_csip_set_coordinator_release` now require that :kconfig:option:`CONFIG_BT_BONDABLE`
+  is enabled and that all members are bonded, to comply with the requirements from the CSIP spec.
+  (:github:`78877`)
+
+* The Broadcast Audio Scan Service (BASS) shall now be registered and unregistered dynamically
+  at runtime within the scan delegator. Two new APIs, :c:func:`bt_bap_scan_delegator_register()`
+  and :c:func:`bt_bap_scan_delegator_unregister()`, have been introduced to manage both BASS and
+  scan delegator registration and initialization dynamically. It should also be mentioned that
+  the previous callback registration function, :c:func:`bt_bap_scan_delegator_register_cb()` has
+  now been removed and merged with :c:func:`bt_bap_scan_delegator_register()`.
+  This change allows more flexibility when registering or unregistering scan delegator and BASS
+  related functionality without requiring build-time configuration. Existing need to be updated
+  to use these new APIs.
+  (:github:`78751`)
+
 Bluetooth Classic
 =================
 
@@ -195,7 +319,23 @@ Networking
 
 * The Ethernet bridge shell is moved under network shell. This is done so that
   all the network shell activities can be found under ``net`` shell command.
-  After this change the bridge shell is used by ``net bridge`` command.
+  After this change the bridge shell is used by ``net bridge`` command. (:github:`77235`)
+
+* The Ethernet bridging code is changed to allow similar configuration experience
+  as in Linux. The bridged Ethernet interface can be used normally even if bridging
+  is enabled. The actual bridging is done by a separate virtual network interface that
+  directs network packets to bridged Ethernet interfaces.
+  The :c:func:`eth_bridge_iface_allow_tx` is removed as it is not needed because the
+  bridged Ethernet interface can send and receive data normally.
+  The :c:func:`eth_bridge_listener_add` and :c:func:`eth_bridge_listener_remove` are
+  removed as same functionality can be achieved using promiscuous API.
+  Because the bridge interface is a normal network interface,
+  the :c:func:`eth_bridge_iface_add` and :c:func:`eth_bridge_iface_remove`
+  will take network interface pointer as a first parameter. (:github:`77987`)
+
+* To facilitate use outside of the networking subsystem, the network buffer header file was renamed
+  from :zephyr_file:`include/zephyr/net/buf.h` to :zephyr_file:`include/zephyr/net_buf.h` and the
+  implementation moved to :zephyr_file:`lib/net_buf/`. (:github:`78009`)
 
 Other Subsystems
 ****************
@@ -213,6 +353,10 @@ hawkBit
 
 MCUmgr
 ======
+
+* The ``MCUMGR_TRANSPORT_BT_AUTHEN`` Kconfig option from the :kconfig:option:`CONFIG_MCUMGR_TRANSPORT_BT` MCUmgr transport has been replaced with the :kconfig:option:`CONFIG_MCUMGR_TRANSPORT_BT_PERM_RW` Kconfig choice.
+  The requirement for Bluetooth authentication is now indicated by the :kconfig:option:`CONFIG_MCUMGR_TRANSPORT_BT_PERM_RW_AUTHEN` Kconfig option.
+  To remove the default requirement for Bluetooth authentication it is necessary to enable the :kconfig:option:`CONFIG_MCUMGR_TRANSPORT_BT_PERM_RW` Kconfig option in the project configuration.
 
 Modem
 =====

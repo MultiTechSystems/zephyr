@@ -25,7 +25,7 @@
 #include <zephyr/bluetooth/hci_types.h>
 #include <zephyr/bluetooth/iso.h>
 #include <zephyr/kernel.h>
-#include <zephyr/net/buf.h>
+#include <zephyr/net_buf.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/printk.h>
@@ -176,7 +176,7 @@ static void unicast_stream_disabled(struct bt_bap_stream *stream)
 
 static void unicast_stream_stopped(struct bt_bap_stream *stream, uint8_t reason)
 {
-	printk("Stopped stream with reason 0x%02X%p\n", stream, reason);
+	printk("Stopped stream %p with reason 0x%02X\n", stream, reason);
 }
 
 static void unicast_stream_released(struct bt_bap_stream *stream)

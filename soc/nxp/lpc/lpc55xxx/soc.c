@@ -228,7 +228,7 @@ static ALWAYS_INLINE void clock_init(void)
 	 * According to reference mannual, device mode setting has to be set by access
 	 * usb host register
 	 */
-	*((uint32_t *)(USBFSH_BASE + 0x5C)) |= USBFSH_PORTMODE_DEV_ENABLE_MASK;
+	USBFSH->PORTMODE |= USBFSH_PORTMODE_DEV_ENABLE_MASK;
 	/* disable usb0 host clock */
 	CLOCK_DisableClock(kCLOCK_Usbhsl0);
 
@@ -244,12 +244,12 @@ static ALWAYS_INLINE void clock_init(void)
 	/* enable usb1 host clock */
 	CLOCK_EnableClock(kCLOCK_Usbh1);
 	/* Put PHY powerdown under software control */
-	*((uint32_t *)(USBHSH_BASE + 0x50)) = USBHSH_PORTMODE_SW_PDCOM_MASK;
+	USBHSH->PORTMODE = USBHSH_PORTMODE_SW_PDCOM_MASK;
 	/*
 	 * According to reference manual, device mode setting has to be set by
 	 * access usb host register
 	 */
-	*((uint32_t *)(USBHSH_BASE + 0x50)) |= USBHSH_PORTMODE_DEV_ENABLE_MASK;
+	USBHSH->PORTMODE |= USBHSH_PORTMODE_DEV_ENABLE_MASK;
 	/* disable usb1 host clock */
 	CLOCK_DisableClock(kCLOCK_Usbh1);
 
@@ -369,9 +369,9 @@ static int nxp_lpc55xxx_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_PLATFORM_SPECIFIC_INIT
+#ifdef CONFIG_SOC_RESET_HOOK
 
-void z_arm_platform_init(void)
+void soc_reset_hook(void)
 {
 	SystemInit();
 
@@ -385,7 +385,7 @@ void z_arm_platform_init(void)
 #endif
 }
 
-#endif /* CONFIG_PLATFORM_SPECIFIC_INIT */
+#endif /* CONFIG_SOC_RESET_HOOK */
 
 SYS_INIT(nxp_lpc55xxx_init, PRE_KERNEL_1, 0);
 
