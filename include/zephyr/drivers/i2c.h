@@ -801,7 +801,9 @@ static inline int z_impl_i2c_transfer(const struct device *dev,
 		return 0;
 	}
 
-	msgs[num_msgs - 1].flags |= I2C_MSG_STOP;
+	if (!IS_ENABLED(CONFIG_I2C_ALLOW_NO_STOP_TRANSACTIONS)) {
+		msgs[num_msgs - 1].flags |= I2C_MSG_STOP;
+	}
 
 	int res =  api->transfer(dev, msgs, num_msgs, addr);
 
@@ -857,7 +859,9 @@ static inline int i2c_transfer_cb(const struct device *dev,
 		return 0;
 	}
 
-	msgs[num_msgs - 1].flags |= I2C_MSG_STOP;
+	if (!IS_ENABLED(CONFIG_I2C_ALLOW_NO_STOP_TRANSACTIONS)) {
+		msgs[num_msgs - 1].flags |= I2C_MSG_STOP;
+	}
 
 	return api->transfer_cb(dev, msgs, num_msgs, addr, cb, userdata);
 }
@@ -1009,6 +1013,18 @@ static inline int i2c_transfer_signal(const struct device *dev,
 #if defined(CONFIG_I2C_RTIO) || defined(__DOXYGEN__)
 
 /**
+ * @brief Fallback submit implementation
+ *
+ * This implementation will schedule a blocking I2C transaction on the bus via the RTIO work
+ * queue. It is only used if the I2C driver did not implement the iodev_submit function.
+ *
+ * @param dev Pointer to the device structure for an I2C controller driver.
+ * @param iodev_sqe Prepared submissions queue entry connected to an iodev
+ *                  defined by I2C_DT_IODEV_DEFINE.
+ */
+void i2c_iodev_submit_fallback(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe);
+
+/**
  * @brief Submit request(s) to an I2C device with RTIO
  *
  * @param iodev_sqe Prepared submissions queue entry connected to an iodev
@@ -1020,6 +1036,10 @@ static inline void i2c_iodev_submit(struct rtio_iodev_sqe *iodev_sqe)
 	const struct device *dev = dt_spec->bus;
 	const struct i2c_driver_api *api = (const struct i2c_driver_api *)dev->api;
 
+	if (api->iodev_submit == NULL) {
+		rtio_iodev_sqe_err(iodev_sqe, -ENOSYS);
+		return;
+	}
 	api->iodev_submit(dt_spec->bus, iodev_sqe);
 }
 

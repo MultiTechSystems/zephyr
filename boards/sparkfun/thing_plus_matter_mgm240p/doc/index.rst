@@ -105,7 +105,7 @@ Programming and Debugging
 Flashing
 ========
 
-The sample application :ref:`hello_world` is used for this example.
+The sample application :zephyr:code-sample:`hello_world` is used for this example.
 Build the Zephyr kernel and application:
 
 .. zephyr-app-commands::
@@ -141,7 +141,7 @@ blobs from the SiLabs HAL repository.
    west blobs fetch silabs
 
 Then build the Zephyr kernel and a Bluetooth sample with the following
-command. The :ref:`bluetooth-observer-sample` sample application is used in
+command. The :zephyr:code-sample:`bluetooth_observer` sample application is used in
 this example.
 
 .. zephyr-app-commands::

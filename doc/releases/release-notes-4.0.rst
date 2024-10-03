@@ -21,6 +21,8 @@ The following CVEs are addressed by this release:
 More detailed information can be found in:
 https://docs.zephyrproject.org/latest/security/vulnerabilities.html
 
+* CVE-2024-8798: Under embargo until 2024-11-22
+
 API Changes
 ***********
 
@@ -40,12 +42,15 @@ Removed APIs in this release
 
 * Macro ``K_THREAD_STACK_MEMBER``, deprecated since v3.5.0, has been removed.
   Use :c:macro:`K_KERNEL_STACK_MEMBER` instead.
+* ``CBPRINTF_PACKAGE_COPY_*`` macros, deprecated since Zephyr 3.5.0, have been removed.
 
 Deprecated in this release
 ==========================
 
 * Deprecated the :c:func:`net_buf_put` and :c:func:`net_buf_get` API functions in favor of
   :c:func:`k_fifo_put` and :c:func:`k_fifo_get`.
+
+* The :ref:`kscan_api` subsystem has been marked as deprecated.
 
 Architectures
 *************
@@ -63,6 +68,13 @@ Architectures
   * The stack traces upon fatal exception now prints the address of stack pointer (sp) or frame
     pointer (fp) depending on the build configuration.
 
+  * When :kconfig:option:`CONFIG_EXTRA_EXCEPTION_INFO` is enabled, the exception stack frame (arch_esf)
+    has an additional field ``csf`` that points to the callee-saved-registers upon an fatal error,
+    which can be accessed in :c:func:`k_sys_fatal_error_handler` by ``esf->csf``.
+
+    * For SoCs that select ``RISCV_SOC_HAS_ISR_STACKING``, the ``SOC_ISR_STACKING_ESF_DECLARE`` has to
+      include the ``csf`` member, otherwise the build would fail.
+
 * Xtensa
 
 * x86
@@ -76,6 +88,16 @@ Bluetooth
 *********
 
 * Audio
+
+  * :c:func:`bt_tbs_client_register_cb` now supports multiple listeners and may now return an error.
+
+  * Added APIs for getting and setting the assisted listening stream values in codec capabilities
+    and codec configuration:
+
+    * :c:func:`bt_audio_codec_cfg_meta_get_assisted_listening_stream`
+    * :c:func:`bt_audio_codec_cfg_meta_set_assisted_listening_stream`
+    * :c:func:`bt_audio_codec_cap_meta_get_assisted_listening_stream`
+    * :c:func:`bt_audio_codec_cap_meta_set_assisted_listening_stream`
 
 * Host
 
@@ -101,11 +123,26 @@ Boards & SoC Support
   * :ref:`native_posix<native_posix>` has been deprecated in favour of
     :ref:`native_sim<native_sim>`.
   * Support for Google Kukui EC board (``google_kukui``) has been dropped.
+  * STM32: Deprecated MCO configuration via Kconfig in favour of setting it through devicetree.
+    See ``samples/boards/stm32/mco`` sample.
 
 * Added support for the following shields:
 
 Build system and Infrastructure
 *******************************
+
+* Added support for .elf files to the west flash command for jlink, pyocd and linkserver runners.
+
+* Extracted pickled EDT generation from gen_defines.py into gen_edt.py. This moved the following
+  parameters from the cmake variable ``EXTRA_GEN_DEFINES_ARGS`` to ``EXTRA_GEN_EDT_ARGS``:
+
+   * ``--dts``
+   * ``--dtc-flags``
+   * ``--bindings-dirs``
+   * ``--dts-out``
+   * ``--edt-pickle-out``
+   * ``--vendor-prefixes``
+   * ``--edtlib-Werror``
 
 Documentation
 *************
@@ -157,11 +194,17 @@ Drivers and Sensors
 
 * LED
 
+  * lp5562: added ``enable-gpios`` property to describe the EN/VCC GPIO of the lp5562.
+
   * lp5569: added ``charge-pump-mode`` property to configure the charge pump of the lp5569.
 
   * lp5569: added ``enable-gpios`` property to describe the EN/PWM GPIO of the lp5569.
 
+  * LED code samples have been consolidated under the :zephyr_file:`samples/drivers/led` directory.
+
 * LED Strip
+
+  * Updated ws2812 GPIO driver to support dynamic bus timings
 
 * LoRa
 
@@ -172,6 +215,9 @@ Drivers and Sensors
 * MFD
 
 * Modem
+
+  * Added support for the U-Blox LARA-R6 modem.
+  * Added support for setting the modem's UART baudrate during init.
 
 * MIPI-DBI
 
@@ -201,6 +247,8 @@ Drivers and Sensors
 * Serial
 
   * LiteX: Renamed the ``compatible`` from ``litex,uart0`` to :dtcompatible:`litex,uart`.
+  * Nordic: Removed ``CONFIG_UART_n_GPIO_MANAGEMENT`` Kconfig options (where n is an instance
+    index) which had no use after pinctrl driver was introduced.
 
 * SPI
 
@@ -241,6 +289,8 @@ Networking
   * Location object: optional resources altitude, radius, and speed can now be
   used optionally as per the location object's specification. Users of these
   resources will now need to provide a read buffer.
+
+  * lwm2m_senml_cbor: Regenerated generated code files using zcbor 0.9.0
 
 * Misc:
 
@@ -290,6 +340,13 @@ Libraries / Subsystems
 
     * Added support for :ref:`mcumgr_smp_group_10`, which allows for listing information on
       supported groups.
+    * Fixed formatting of milliseconds in :c:enum:`OS_MGMT_ID_DATETIME_STR` by adding
+      leading zeros.
+    * Added support for custom os mgmt bootloader info responses using notification hooks, this
+      can be enabled witbh :kconfig:option:`CONFIG_MCUMGR_GRP_OS_BOOTLOADER_INFO_HOOK`, the data
+      structure is :c:struct:`os_mgmt_bootloader_info_data`.
+    * Added support for img mgmt slot info command, which allows for listing information on
+      images and slots on the device.
 
 * Logging
 
@@ -298,6 +355,26 @@ Libraries / Subsystems
 * Power management
 
 * Crypto
+
+  * Mbed TLS was updated to version 3.6.1. The release notes can be found at:
+    https://github.com/Mbed-TLS/mbedtls/releases/tag/mbedtls-3.6.1
+  * The Kconfig symbol :kconfig:option:`CONFIG_MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG_ALLOW_NON_CSPRNG`
+    was added to allow ``psa_get_random()`` to make use of non-cryptographically
+    secure random sources when :kconfig:option:`CONFIG_MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG`
+    is also enabled. This is only meant to be used for test purposes, not in production.
+    (:github:`76408`)
+  * The Kconfig symbol :kconfig:option:`CONFIG_MBEDTLS_TLS_VERSION_1_3` was added to
+    enable TLS 1.3 support from Mbed TLS. When this is enabled the following
+    new Kconfig symbols can also be enabled:
+
+    * :kconfig:option:`CONFIG_MBEDTLS_TLS_SESSION_TICKETS` to enable session tickets
+      (RFC 5077);
+    * :kconfig:option:`CONFIG_MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_PSK_ENABLED`
+      for TLS 1.3 PSK key exchange mode;
+    * :kconfig:option:`CONFIG_MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_EPHEMERAL_ENABLED`
+      for TLS 1.3 ephemeral key exchange mode;
+    * :kconfig:option:`CONFIG_MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_PSK_EPHEMERAL_ENABLED`
+      for TLS 1.3 PSK ephemeral key exchange mode.
 
 * CMSIS-NN
 
@@ -313,6 +390,8 @@ Libraries / Subsystems
     L1 ``kernel thread`` shell command as ``kernel thread list`` & ``kernel thread stacks``
   * Added multiple shell command to configure the CPU mask affinity / pinning a thread in
     runtime, do ``kernel thread -h`` for more info.
+  * ``kernel reboot`` shell command without any additional arguments will now do a cold reboot
+    instead of requiring you to type ``kernel reboot cold``.
 
 * State Machine Framework
 
@@ -352,6 +431,20 @@ Trusted Firmware-M
 
 LVGL
 ****
+
+zcbor
+*****
+
+* Updated the zcbor library to version 0.9.0.
+  Full release notes at https://github.com/NordicSemiconductor/zcbor/blob/0.9.0/RELEASE_NOTES.md
+  Migration guide at https://github.com/NordicSemiconductor/zcbor/blob/0.9.0/MIGRATION_GUIDE.md
+  Highlights:
+
+    * Many code generation bugfixes
+
+    * You can now decide at run-time whether the decoder should enforce canonical encoding.
+
+    * Allow --file-header to accept a path to a file with header contents
 
 Tests and Samples
 *****************

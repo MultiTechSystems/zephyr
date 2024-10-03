@@ -107,6 +107,10 @@ configuration supports the following hardware features:
 +-----------+------------+-------------------------------------+
 | I2C       | on-chip    | i2c                                 |
 +-----------+------------+-------------------------------------+
+| ACMP      | on-chip    | analog comparator                   |
++-----------+------------+-------------------------------------+
+| ADC       | on-chip    | adc                                 |
++-----------+------------+-------------------------------------+
 
 The default configuration can be found in the defconfig file:
 :zephyr_file:`boards/nxp/mimxrt1180_evk/mimxrt1180_evk_mimxrt1189_cm33_defconfig`
@@ -209,7 +213,7 @@ etc.):
 Flashing
 ========
 
-Here is an example for the :ref:`hello_world` application on cm33 core.
+Here is an example for the :zephyr:code-sample:`hello_world` application on cm33 core.
 
 Before power on the board, make sure SW5 is set to 0100b
 
@@ -230,7 +234,7 @@ see the following message in the terminal:
 Debugging
 =========
 
-Here is an example for the :ref:`hello_world` application.
+Here is an example for the :zephyr:code-sample:`hello_world` application.
 
 .. zephyr-app-commands::
    :zephyr-app: samples/hello_world

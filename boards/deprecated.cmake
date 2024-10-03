@@ -35,10 +35,10 @@ set(actinius_icarus_som_ns_DEPRECATED
     actinius_icarus_som/nrf9160/ns
 )
 set(adafruit_feather_DEPRECATED
-    adafruit_feather_nrf52840_express
+    adafruit_feather_nrf52840/nrf52840
 )
 set(adafruit_feather_nrf52840_DEPRECATED
-    adafruit_feather_nrf52840_express
+    adafruit_feather_nrf52840/nrf52840
 )
 set(adafruit_itsybitsy_nrf52840_DEPRECATED
     adafruit_itsybitsy
@@ -720,6 +720,9 @@ set(qemu_x86_virt_DEPRECATED
 )
 set(qemu_x86_xip_DEPRECATED
     qemu_x86/atom/xip
+)
+set(qemu_xtensa_DEPRECATED
+    qemu_xtensa/dc233c
 )
 set(qemu_xtensa_mmu_DEPRECATED
     qemu_xtensa/dc233c/mmu

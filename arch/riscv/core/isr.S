@@ -443,6 +443,12 @@ do_fault:
 1:	mv a1, sp
 
 #ifdef CONFIG_EXCEPTION_DEBUG
+	/*
+	 * Restore the s0 we saved early in ISR entry
+	 * so it shows up properly in the CSF.
+	 */
+	lr s0, __struct_arch_esf_s0_OFFSET(sp)
+
 	/* Allocate space for caller-saved registers on current thread stack */
 	addi sp, sp, -__callee_saved_t_SIZEOF
 
@@ -450,10 +456,15 @@ do_fault:
 	STORE_CALLEE_SAVED()		;
 	mv a2, sp
 
+#ifdef CONFIG_EXTRA_EXCEPTION_INFO
+	/* Store csf's addr into esf (a1 still holds the pointer to the esf at this point) */
+	sr a2 __struct_arch_esf_csf_OFFSET(a1)
+#endif /* CONFIG_EXTRA_EXCEPTION_INFO */
+
 	tail z_riscv_fatal_error_csf
 #else
 	tail z_riscv_fatal_error
-#endif
+#endif /* CONFIG_EXCEPTION_DEBUG */
 
 #if defined(CONFIG_IRQ_OFFLOAD)
 do_irq_offload:

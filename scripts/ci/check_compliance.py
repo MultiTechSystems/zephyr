@@ -264,8 +264,12 @@ class BoardYmlCheck(ComplianceTest):
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
-                vendor, _ = line.split("\t", 2)
-                vendor_prefixes.append(vendor)
+                try:
+                    vendor, _ = line.split("\t", 2)
+                    vendor_prefixes.append(vendor)
+                except ValueError:
+                    self.error(f"Invalid line in vendor-prefixes.txt:\"{line}\".")
+                    self.error("Did you forget the tab character?")
 
         path = Path(ZEPHYR_BASE)
         for file in path.glob("**/board.yml"):
@@ -383,6 +387,11 @@ class KconfigCheck(ComplianceTest):
         This is needed to complete Kconfig sanity tests.
 
         """
+        if self.no_modules:
+            with open(modules_file, 'w') as fp_module_file:
+                fp_module_file.write("# Empty\n")
+            return
+
         # Invoke the script directly using the Python executable since this is
         # not a module nor a pip-installed Python utility
         zephyr_module_path = os.path.join(ZEPHYR_BASE, "scripts",
@@ -409,18 +418,6 @@ class KconfigCheck(ComplianceTest):
                     modules_dir + '/' + module + '/Kconfig'
                 ))
             fp_module_file.write(content)
-
-        if self.no_modules:
-            module_define_content = ""
-            module_definition = re.compile('config ZEPHYR_.*_MODULE.*').search
-            with open(modules_file, 'r+') as fp_module_file:
-                for line in fp_module_file:
-                    if module_definition(line):
-                        module_define_content += line
-                        module_define_content += "\tbool\n"
-                fp_module_file.seek(0)
-                fp_module_file.write(module_define_content)
-                fp_module_file.truncate()
 
     def get_module_setting_root(self, root, settings_file):
         """
@@ -546,7 +543,7 @@ class KconfigCheck(ComplianceTest):
         kconfig_soc_file = os.path.join(kconfig_dir, 'soc', 'Kconfig.soc')
         kconfig_file = os.path.join(kconfig_dir, 'soc', 'Kconfig')
 
-        root_args = argparse.Namespace(**{'soc_roots': [Path(ZEPHYR_BASE)]})
+        root_args = argparse.Namespace(**{'soc_roots': soc_roots})
         v2_systems = list_hardware.find_v2_systems(root_args)
 
         soc_folders = {soc.folder for soc in v2_systems.get_socs()}
@@ -931,6 +928,7 @@ flagged.
         "BOOT_SWAP_USING_SCRATCH", # Used in sysbuild for MCUboot configuration
         "BOOT_ENCRYPTION_KEY_FILE", # Used in sysbuild
         "BOOT_ENCRYPT_IMAGE", # Used in sysbuild
+        "BOOT_MAX_IMG_SECTORS_AUTO", # Used in sysbuild
         "BINDESC_", # Used in documentation as a prefix
         "BOOT_UPGRADE_ONLY", # Used in example adjusting MCUboot config, but
                              # symbol is defined in MCUboot itself.
@@ -1488,6 +1486,49 @@ class YAMLLint(ComplianceTest):
                 for p in linter.run(fp, yaml_config):
                     self.fmtd_failure('warning', f'YAMLLint ({p.rule})', file,
                                       p.line, col=p.column, desc=p.desc)
+
+
+class SphinxLint(ComplianceTest):
+    """
+    SphinxLint
+    """
+
+    name = "SphinxLint"
+    doc = "Check Sphinx/reStructuredText files with sphinx-lint."
+    path_hint = "<git-top>"
+
+    # Checkers added/removed to sphinx-lint's default set
+    DISABLE_CHECKERS = ["horizontal-tab", "missing-space-before-default-role"]
+    ENABLE_CHECKERS = ["default-role"]
+
+    def run(self):
+        for file in get_files():
+            if not file.endswith(".rst"):
+                continue
+
+            try:
+                # sphinx-lint does not expose a public API so interaction is done via CLI
+                subprocess.run(
+                    f"sphinx-lint -d {','.join(self.DISABLE_CHECKERS)} -e {','.join(self.ENABLE_CHECKERS)} {file}",
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    shell=True,
+                    cwd=GIT_TOP,
+                )
+
+            except subprocess.CalledProcessError as ex:
+                for line in ex.output.decode("utf-8").splitlines():
+                    match = re.match(r"^(.*):(\d+): (.*)$", line)
+
+                    if match:
+                        self.fmtd_failure(
+                            "error",
+                            "SphinxLint",
+                            match.group(1),
+                            int(match.group(2)),
+                            desc=match.group(3),
+                        )
 
 
 class KeepSorted(ComplianceTest):

@@ -88,7 +88,7 @@ static void nvs_lookup_cache_invalidate(struct nvs_fs *fs, uint32_t sector)
 /* nvs_al_size returns size aligned to fs->write_block_size */
 static inline size_t nvs_al_size(struct nvs_fs *fs, size_t len)
 {
-	uint8_t write_block_size = fs->flash_parameters->write_block_size;
+	size_t write_block_size = fs->flash_parameters->write_block_size;
 
 	if (write_block_size <= 1U) {
 		return len;
@@ -1309,14 +1309,13 @@ ssize_t nvs_calc_free_space(struct nvs_fs *fs)
 
 	ate_size = nvs_al_size(fs, sizeof(struct nvs_ate));
 
-	free_space = 0;
-	for (uint16_t i = 1; i < fs->sector_count; i++) {
-		/*
-		 * There is always a closing ATE and a reserved ATE for
-		 * deletion in each sector
-		 */
-		free_space += (fs->sector_size - (2 * ate_size));
-	}
+	/*
+	 * There is always a closing ATE and a reserved ATE for
+	 * deletion in each sector.
+	 * Take into account one less sector because it is reserved for the
+	 * garbage collection.
+	 */
+	free_space = (fs->sector_count - 1) * (fs->sector_size - (2 * ate_size));
 
 	step_addr = fs->ate_wra;
 

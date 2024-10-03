@@ -216,7 +216,6 @@ static const struct wdt_driver_api wdt_api = {
 static void wdt_esp32_isr(void *arg)
 {
 	const struct device *dev = (const struct device *)arg;
-	const struct wdt_esp32_config *config = dev->config;
 	struct wdt_esp32_data *data = dev->data;
 
 	if (data->callback) {
@@ -227,10 +226,10 @@ static void wdt_esp32_isr(void *arg)
 }
 
 
-#if DT_NODE_HAS_STATUS(DT_NODELABEL(wdt0), okay)
+#if DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(wdt0))
 ESP32_WDT_INIT(0);
 #endif
 
-#if DT_NODE_HAS_STATUS(DT_NODELABEL(wdt1), okay)
+#if DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(wdt1))
 ESP32_WDT_INIT(1);
 #endif

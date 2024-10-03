@@ -404,9 +404,9 @@ class TestPlan:
         # Note, internally in twister a board root includes the `boards` folder
         # but in Zephyr build system, the board root is without the `boards` in folder path.
         board_roots = [Path(os.path.dirname(root)) for root in self.env.board_roots]
-        lb_args = Namespace(arch_roots=[Path(ZEPHYR_BASE)], soc_roots=[Path(ZEPHYR_BASE),
-                            Path(ZEPHYR_BASE) / 'subsys' / 'testsuite'],
+        lb_args = Namespace(arch_roots=self.env.arch_roots, soc_roots=self.env.soc_roots,
                             board_roots=board_roots, board=None, board_dir=None)
+
         v1_boards = list_boards.find_boards(lb_args)
         v2_dirs = list_boards.find_v2_board_dirs(lb_args)
         for b in v1_boards:
@@ -624,8 +624,7 @@ class TestPlan:
                     instance.metrics['available_ram'] = ts.get('available_ram', 0)
                     instance.metrics['available_rom'] = ts.get('available_rom', 0)
 
-                    status = ts.get('status')
-                    status = TwisterStatus(status) if status else TwisterStatus.NONE
+                    status = TwisterStatus(ts.get('status'))
                     reason = ts.get("reason", "Unknown")
                     if status in [TwisterStatus.ERROR, TwisterStatus.FAIL]:
                         if self.options.report_summary is not None:
@@ -649,8 +648,7 @@ class TestPlan:
 
                     for tc in ts.get('testcases', []):
                         identifier = tc['identifier']
-                        tc_status = tc.get('status')
-                        tc_status = TwisterStatus(tc_status) if tc_status else TwisterStatus.NONE
+                        tc_status = TwisterStatus(tc.get('status'))
                         tc_reason = None
                         # we set reason only if status is valid, it might have been
                         # reset above...
@@ -767,8 +765,7 @@ class TestPlan:
             # If there isn't any overlap between the platform_allow list and the platform_scope
             # we set the scope to the platform_allow list
             if ts.platform_allow and not platform_filter and not integration and platform_config.get('increased_platform_scope', True):
-                self.verify_platforms_existence(
-                    ts.platform_allow, f"{ts_name} - platform_allow")
+                self.verify_platforms_existence(ts.platform_allow, f"{ts_name} - platform_allow")
                 a = set(platform_scope)
                 b = set(filter(lambda item: item.name in ts.platform_allow, self.platforms))
                 c = a.intersection(b)
@@ -846,6 +843,9 @@ class TestPlan:
                         instance.add_filter("In test case arch exclude", Filters.TESTSUITE)
 
                     if ts.platform_exclude and plat.name in ts.platform_exclude:
+                        # works only when we have all platforms parsed, -p limits parsing...
+                        if not platform_filter:
+                            self.verify_platforms_existence(ts.platform_exclude, f"{ts_name} - platform_exclude")
                         instance.add_filter("In test case platform exclude", Filters.TESTSUITE)
 
                 if ts.toolchain_exclude and toolchain in ts.toolchain_exclude:

@@ -55,6 +55,10 @@ The boards support the following hardware features:
 +-----------+------------+-------------------------------------+
 | FLEXCAN   | on-chip    | can                                 |
 +-----------+------------+-------------------------------------+
+| SAR_ADC   | on-chip    | adc                                 |
++-----------+------------+-------------------------------------+
+| LPI2C     | on-chip    | i2c                                 |
++-----------+------------+-------------------------------------+
 
 Other hardware features are not currently supported by the port.
 
@@ -114,7 +118,7 @@ Serial Port
 ===========
 
 The SoC has 12 LINFlexD instances that can be used in UART mode. The console can
-be accessed by default on the USB micro-B connector `J119`.
+be accessed by default on the USB micro-B connector J119.
 
 Watchdog
 ========
@@ -128,7 +132,7 @@ Ethernet
 
 NETC driver supports to manage the Physical Station Interface (PSI0) and/or a
 single Virtual SI (VSI). The rest of the VSI's shall be assigned to different
-cores of the system. Refer to :ref:`nxp_s32_netc-samples` to learn how to
+cores of the system. Refer to :zephyr:code-sample:`nxp_s32_netc` to learn how to
 configure the Ethernet network controller.
 
 Controller Area Network
@@ -149,6 +153,15 @@ FlexCAN
 -------
 
 FlexCAN supports CAN Classic (CAN 2.0) and CAN FD modes.
+
+ADC
+===
+
+ADC is provided through ADC SAR controller with 2 instances. Each ADC SAR instance has
+12-bit resolution. ADC channels are divided into 2 groups (precision and internal/standard).
+
+.. note::
+   All channels of an instance only run on 1 group channel at the same time.
 
 Programming and Debugging
 *************************
@@ -187,7 +200,7 @@ under Linux, ``/dev/ttyUSB0``.
 Debugging
 =========
 
-You can build and debug the :ref:`hello_world` sample for the board
+You can build and debug the :zephyr:code-sample:`hello_world` sample for the board
 ``s32z2xxdc2/s32z270/rtu0`` with:
 
 .. zephyr-app-commands::
@@ -283,7 +296,7 @@ Where:
 - ``<core_id>`` is the zero-based core index relative to the RTU on which to
   run the Zephyr application (0, 1, 2 or 3)
 
-For example, to build the :ref:`hello_world` sample for the board
+For example, to build the :zephyr:code-sample:`hello_world` sample for the board
 ``s32z2xxdc2/s32z270/rtu0`` with split-lock core configuration:
 
 .. zephyr-app-commands::

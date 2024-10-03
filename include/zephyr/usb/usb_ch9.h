@@ -283,7 +283,12 @@ struct usb_association_descriptor {
 /** Macro to obtain descriptor index from USB_SREQ_GET_DESCRIPTOR request */
 #define USB_GET_DESCRIPTOR_INDEX(wValue)	((uint8_t)(wValue))
 
-/** USB Control Endpoints maximum packet size (MPS) */
+/**
+ * USB Control Endpoints maximum packet size (MPS)
+ *
+ * This value may not be correct for devices operating at speeds other than
+ * high speed.
+ */
 #define USB_CONTROL_EP_MPS		64U
 
 /** USB endpoint direction mask */
@@ -362,6 +367,12 @@ struct usb_association_descriptor {
 #define USB_TPL_TO_MPS(tpl)				\
 	(((tpl) > 2048) ? ((2 << 11) | ((tpl) / 3)) :	\
 	 ((tpl) > 1024) ? ((1 << 11) | ((tpl) / 2)) :	\
+	 (tpl))
+
+/** Round up total payload length to next valid value */
+#define USB_TPL_ROUND_UP(tpl)				\
+	(((tpl) > 2048) ? ROUND_UP(tpl, 3) :		\
+	 ((tpl) > 1024) ? ROUND_UP(tpl, 2) :		\
 	 (tpl))
 
 /** Determine whether total payload length value is valid according to USB 2.0 */

@@ -527,6 +527,10 @@
 #define NRFX_SYSTICK_CONFIG_LOG_ENABLED 1
 #endif
 
+#ifdef CONFIG_NRFX_TBM
+#define NRFX_TBM_ENABLED 1
+#endif
+
 #ifdef CONFIG_NRFX_TEMP
 #define NRFX_TEMP_ENABLED 1
 #endif
@@ -835,6 +839,9 @@
 #ifdef CONFIG_NRFX_WDT
 #define NRFX_WDT_ENABLED 1
 #endif
+#ifdef CONFIG_WDT_NRFX_NO_IRQ
+#define NRFX_WDT_CONFIG_NO_IRQ 1
+#endif
 #ifdef CONFIG_NRFX_WDT_LOG
 #define NRFX_WDT_CONFIG_LOG_ENABLED 1
 #endif
@@ -993,7 +1000,7 @@
 
 #define NRFX_IPCT_PUB_OR_SUB_MASK(inst_num) \
 	COND_CODE_1(IS_EMPTY(inst_num), \
-		(DT_NODE_HAS_STATUS(NRFX_CONFIG_IPCT_LOCAL_NODE, okay)), \
+		(DT_NODE_HAS_STATUS_OKAY(NRFX_CONFIG_IPCT_LOCAL_NODE)), \
 		(DT_NODE_HAS_PROP(DT_NODELABEL(_CONCAT(ipct, inst_num)), owned_channels)))
 
 /* Variables names generation. */
@@ -1047,6 +1054,8 @@
     #include <nrfx_config_nrf54l15_enga_application.h>
 #elif (defined(NRF54L15_XXAA) || defined(NRF54L15_ENGA_XXAA)) && defined(NRF_FLPR)
     #include <nrfx_config_nrf54l15_enga_flpr.h>
+#elif (defined(NRF54L20_XXAA) || defined(NRF54L20_ENGA_XXAA)) && defined(NRF_APPLICATION)
+    #include <nrfx_config_nrf54l20_enga_application.h>
 #elif defined(NRF9120_XXAA) || defined(NRF9160_XXAA)
     #include <nrfx_config_nrf91.h>
 #elif defined(NRF9230_ENGB_XXAA) && defined(NRF_APPLICATION)
@@ -1056,7 +1065,7 @@
 #elif defined(NRF9230_ENGB_XXAA) && defined(NRF_PPR)
     #include <nrfx_config_nrf9230_engb_ppr.h>
 #else
-    #error "Unknown device."
+    #include <nrfx_config_ext.h>
 #endif
 
 #endif // NRFX_CONFIG_H__

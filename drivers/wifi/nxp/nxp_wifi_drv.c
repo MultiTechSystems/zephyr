@@ -56,7 +56,7 @@ static struct nxp_wifi_dev nxp_wifi0; /* static instance */
 
 static struct wlan_network nxp_wlan_network;
 
-#ifndef CONFIG_WIFI_NM_WPA_SUPPLICANT
+#ifndef CONFIG_WIFI_NM_HOSTAPD_AP
 static char uap_ssid[IEEEtypes_SSID_SIZE + 1];
 #endif
 
@@ -231,7 +231,7 @@ int nxp_wifi_wlan_event_callback(enum wlan_event_reason reason, void *data)
 	case WLAN_REASON_UAP_SUCCESS:
 		net_eth_carrier_on(g_uap.netif);
 		LOG_DBG("WLAN: UAP Started");
-#ifndef CONFIG_WIFI_NM_WPA_SUPPLICANT
+#ifndef CONFIG_WIFI_NM_HOSTAPD_AP
 		ret = wlan_get_current_uap_network_ssid(uap_ssid);
 		if (ret != WM_SUCCESS) {
 			LOG_ERR("Failed to get Soft AP nxp_wlan_network ssid");
@@ -545,6 +545,38 @@ static int nxp_wifi_stop_ap(const struct device *dev)
 	return 0;
 }
 
+static int nxp_wifi_ap_config_params(const struct device *dev, struct wifi_ap_config_params *params)
+{
+	nxp_wifi_ret_t status = NXP_WIFI_RET_SUCCESS;
+	int ret = WM_SUCCESS;
+	interface_t *if_handle = (interface_t *)dev->data;
+
+	if (if_handle->state.interface != WLAN_BSS_TYPE_UAP) {
+		LOG_ERR("Wi-Fi not in uAP mode");
+		return -EIO;
+	}
+
+	if (s_nxp_wifi_State != NXP_WIFI_STARTED) {
+		status = NXP_WIFI_RET_NOT_READY;
+	}
+
+	if (status == NXP_WIFI_RET_SUCCESS) {
+		if (params->type & WIFI_AP_CONFIG_PARAM_MAX_INACTIVITY) {
+			ret = wlan_uap_set_sta_ageout_timer(params->max_inactivity * 10);
+			if (ret != WM_SUCCESS) {
+				status = NXP_WIFI_RET_FAIL;
+			}
+		} else {
+			return -EINVAL;
+		}
+	}
+
+	if (status != NXP_WIFI_RET_SUCCESS) {
+		return -EAGAIN;
+	}
+
+	return 0;
+}
 #endif
 
 static int nxp_wifi_process_results(unsigned int count)
@@ -1758,7 +1790,7 @@ static const struct zep_wpa_supp_dev_ops nxp_wifi_drv_ops = {
 	.set_country              = wifi_nxp_wpa_supp_set_country,
 	.get_country              = wifi_nxp_wpa_supp_get_country,
 #ifdef CONFIG_NXP_WIFI_SOFTAP_SUPPORT
-#ifdef CONFIG_WIFI_NM_WPA_SUPPLICANT
+#ifdef CONFIG_WIFI_NM_HOSTAPD_AP
 	.hapd_init                = wifi_nxp_hostapd_dev_init,
 	.hapd_deinit              = wifi_nxp_hostapd_dev_deinit,
 #endif
@@ -1807,6 +1839,7 @@ static const struct wifi_mgmt_ops nxp_wifi_uap_mgmt = {
 	.get_power_save_config = nxp_wifi_get_power_save,
 	.set_btwt = nxp_wifi_set_btwt,
 	.ap_bandwidth = nxp_wifi_ap_bandwidth,
+	.ap_config_params = nxp_wifi_ap_config_params,
 };
 
 static const struct net_wifi_mgmt_offload nxp_wifi_uap_apis = {

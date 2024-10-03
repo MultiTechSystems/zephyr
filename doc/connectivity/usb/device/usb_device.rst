@@ -64,7 +64,7 @@ the next interface, preventing other composite functions from working.
 Because of this problem, HCI USB should not be used in a composite configuration.
 This problem is fixed in the implementation for new USB support.
 
-See :ref:`bluetooth-hci-usb-sample` sample for reference.
+See :zephyr:code-sample:`bluetooth_hci_usb` sample for reference.
 
 .. _usb_device_cdc_acm:
 
@@ -168,7 +168,7 @@ List of few Zephyr specific chosen properties which can be used to select
 CDC ACM UART as backend for a subsystem or application:
 
 * ``zephyr,bt-c2h-uart`` used in Bluetooth,
-  for example see :ref:`bluetooth-hci-uart-sample`
+  for example see :zephyr:code-sample:`bluetooth_hci_uart`
 * ``zephyr,ot-uart`` used in OpenThread,
   for example see :zephyr:code-sample:`coprocessor`
 * ``zephyr,shell-uart`` used by shell for serial backend,
@@ -565,7 +565,7 @@ The USB Vendor ID for the Zephyr project is ``0x2FE3``.
 This USB Vendor ID must not be used when a vendor
 integrates Zephyr USB device support into its own product.
 
-Each USB :ref:`sample<usb-samples>` has its own unique Product ID.
+Each USB :zephyr:code-sample-category:`sample<usb>` has its own unique Product ID.
 The USB maintainer, if one is assigned, or otherwise the Zephyr Technical
 Steering Committee, may allocate other USB Product IDs based on well-motivated
 and documented requests.
@@ -595,9 +595,9 @@ The following Product IDs are currently used:
 +----------------------------------------------------+--------+
 | :zephyr:code-sample:`webusb`                       | 0x000A |
 +----------------------------------------------------+--------+
-| :ref:`bluetooth-hci-usb-sample`                    | 0x000B |
+| :zephyr:code-sample:`bluetooth_hci_usb`            | 0x000B |
 +----------------------------------------------------+--------+
-| :ref:`bluetooth-hci-usb-h4-sample`                 | 0x000C |
+| :zephyr:code-sample:`bluetooth_hci_usb_h4`         | 0x000C |
 +----------------------------------------------------+--------+
 | Reserved (previously: wpan-usb)                    | 0x000D |
 +----------------------------------------------------+--------+

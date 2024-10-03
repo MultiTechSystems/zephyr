@@ -4,6 +4,7 @@ menuconfig WIFI_ESP32
 	bool "ESP32 SoC WiFi support"
 	default y
 	depends on DT_HAS_ESPRESSIF_ESP32_WIFI_ENABLED
+	depends on ZEPHYR_HAL_ESPRESSIF_MODULE_BLOBS
 	depends on !SMP
 	select THREAD_CUSTOM_DATA
 	select NET_L2_WIFI_MGMT
@@ -34,6 +35,13 @@ config ESP32_WIFI_STA_AUTO_DHCPV4
 	depends on NET_IPV4
 	help
 	  WiFi driver will automatically initiate DHCPV4 negotiation when connected.
+
+config ESP32_WIFI_AP_STA_MODE
+	bool "Activates the Station/AP co-existence mode."
+	depends on WIFI_NM
+	help
+	  The Station/AP coexistence mode allows the ESP32 to operate as both a station and
+	  an access point simultaneously. This mode is not enabled by default.
 
 config ESP32_WIFI_STA_RECONNECT
 	bool "WiFi connection retry"

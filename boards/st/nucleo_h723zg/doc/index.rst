@@ -136,10 +136,10 @@ and a ST morpho connector. Board is configured as follows:
 - UART_3 TX/RX : PD8/PD9 (ST-Link Virtual Port Com)
 - USER_PB : PC13
 - LD1 : PB0
-- LD2 : PB7
+- LD2 : PE1
 - LD3 : PB14
 - I2C : PB8, PB9
-- SPI1 NSS/SCK/MISO/MOSI : PD14PA5/PA6/PB5 (Arduino SPI)
+- SPI1 NSS/SCK/MISO/MOSI : PD14/PA5/PA6/PB5 (Arduino SPI)
 - FDCAN1 RX/TX : PD0, PD1
 
 System Clock
@@ -171,28 +171,33 @@ connected to pins PD0 (RX) and PD1 (TX).
 Programming and Debugging
 *************************
 
-Currently the ``nucleo_h723zg`` board supports stm32cubeprogrammer (default), OpenOCD and J-Link debuggers.
+Nucleo H723ZG board includes an ST-LINK/V3 embedded debug tool interface.
 
 .. note::
 
-   Official OpenOCD support for this board was added on October '20.
-   Make sure your openocd version is older than that.
-   Following links may be helpful: `OpenOCD installing Debug Version`_
-   and `OpenOCD installing with ST-LINK V3 support`_
-
-.. note::
-
-   Check if your ST-LINK V3 has newest FW version. It can be done with `STM32CubeIDE`_
+   Check if your ST-LINK V3 has newest FW version. It can be done with `STM32CubeProgrammer`_
 
 Flashing
 ========
 
-Nucleo H723ZG board includes an ST-LINK/V3 embedded debug tool interface.
+The board is configured to be flashed using west `STM32CubeProgrammer`_ runner,
+so its :ref:`installation <stm32cubeprog-flash-host-tools>` is required.
+
+Alternatively, OpenOCD or JLink can also be used to flash the board using
+the ``--runner`` (or ``-r``) option:
+
+.. code-block:: console
+
+   $ west flash --runner openocd
+   $ west flash --runner jlink
+
+Flashing an application to Nucleo H723ZG
+----------------------------------------
 
 First, connect the NUCLEO-H723ZG to your host computer using
 the USB port to prepare it for flashing. Then build and flash your application.
 
-Here is an example for the :ref:`hello_world` application.
+Here is an example for the :zephyr:code-sample:`hello_world` application.
 
 Run a serial host program to connect with your NUCLEO-H723ZG board.
 
@@ -230,7 +235,7 @@ Debugging
 =========
 
 You can debug an application in the usual way.  Here is an example for the
-:ref:`hello_world` application.
+:zephyr:code-sample:`hello_world` application.
 
 .. zephyr-app-commands::
    :zephyr-app: samples/hello_world
@@ -258,3 +263,6 @@ You can debug an application in the usual way.  Here is an example for the
 
 .. _STM32CubeIDE:
    https://www.st.com/en/development-tools/stm32cubeide.html
+
+.. _STM32CubeProgrammer:
+   https://www.st.com/en/development-tools/stm32cubeprog.html

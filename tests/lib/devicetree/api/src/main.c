@@ -366,6 +366,17 @@ ZTEST(devicetree_api, test_has_status)
 		      0, "");
 }
 
+ZTEST(devicetree_api, test_has_status_okay)
+{
+	zassert_equal(DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(test_gpio_1)), 1);
+
+	zassert_equal(DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(test_no_status)), 1);
+
+	zassert_equal(DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(disabled_gpio)), 0);
+
+	zassert_equal(DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(reserved_gpio)), 0);
+}
+
 ZTEST(devicetree_api, test_bus)
 {
 	int pin, flags;
@@ -750,6 +761,9 @@ ZTEST(devicetree_api, test_irq)
 
 	/* DT_INST */
 	zassert_equal(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT), 1, "");
+
+	/* DT_INST_NUM_IRQS */
+	zassert_equal(DT_INST_NUM_IRQS(0), 3);
 
 	/* DT_INST_IRQ_HAS_IDX */
 	zassert_equal(DT_INST_IRQ_HAS_IDX(0, 0), 1, "");
@@ -2945,7 +2959,7 @@ ZTEST(devicetree_api, test_fixed_partitions)
 	 * Test this by way of string comparison.
 	 */
 	zassert_true(!strcmp(TO_STRING(DT_FIXED_PARTITION_ADDR(TEST_PARTITION_2)),
-			     "(__REG_IDX_0_VAL_ADDRESS + 458624)"));
+			     "(__REG_IDX_0_VAL_ADDRESSU + 458624U)"));
 	zassert_equal(DT_REG_ADDR(TEST_PARTITION_2), 458624);
 
 	/* Test that all DT_FIXED_PARTITION_ID are defined and unique. */

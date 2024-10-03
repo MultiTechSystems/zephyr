@@ -376,8 +376,7 @@ The following peripherals are currently provided with this board:
 
   Note that this device can only be used with Linux hosts.
 
-.. _net-tools:
-   https://github.com/zephyrproject-rtos/net-tools
+.. _`net-tools`: https://github.com/zephyrproject-rtos/net-tools
 
 .. _nsim_per_offloaded_sockets:
 
@@ -703,7 +702,7 @@ host libC (:kconfig:option:`CONFIG_EXTERNAL_LIBC`):
      Console backend, :ref:`POSIX arch console <nsim_back_console>`, :kconfig:option:`CONFIG_POSIX_ARCH_CONSOLE`, All
      Display, :ref:`Display SDL <nsim_per_disp_sdl>`, :kconfig:option:`CONFIG_SDL_DISPLAY`, All
      Entropy, :ref:`Native posix entropy <nsim_per_entr>`, :kconfig:option:`CONFIG_FAKE_ENTROPY_NATIVE_POSIX`, All
-     EEPROM, EEPROM simulator, :kconfig:option:`CONFIG_EEPROM_SIMULATOR`, Host libC
+     EEPROM, EEPROM simulator, :kconfig:option:`CONFIG_EEPROM_SIMULATOR`, All
      EEPROM, EEPROM emulator, :kconfig:option:`CONFIG_EEPROM_EMULATOR`, All
      Ethernet, :ref:`Eth native_posix <nsim_per_ethe>`, :kconfig:option:`CONFIG_ETH_NATIVE_POSIX`, All
      Flash, :ref:`Flash simulator <nsim_per_flash_simu>`, :kconfig:option:`CONFIG_FLASH_SIMULATOR`, All
