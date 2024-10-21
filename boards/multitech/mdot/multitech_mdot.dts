@@ -20,6 +20,7 @@
 		zephyr,shell-uart = &usart2;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
+		zephyr,flash-controller = &m25p16;
 	};
 
 	leds: leds {
@@ -43,11 +44,12 @@
 		led0 = &green_led_2;
 		sw0 = &user_button;
 		lora0 = &lora;
+		flash1 = &m25p16;
 	};
 };
 
 &clk_lsi {
-	status = "okay";
+	status = "disabled";
 };
 
 &clk_hse {
@@ -119,7 +121,7 @@
 	lora: spi2@0 {
 		compatible = "semtech,sx1272";
 		reg = <0x0>;
-		spi-max-frequency = <10000000>;
+		spi-max-frequency = <DT_FREQ_M(1)>;
 
 		reset-gpios = <&gpiob 0 GPIO_ACTIVE_HIGH>;   /* A0 */
 
@@ -130,6 +132,33 @@
 				<&gpiob 9 (GPIO_PULL_UP | GPIO_ACTIVE_HIGH)>;	   /* DIO4 is D5 */
 
 		power-amplifier-output = "pa-boost";
+	};
+};
+
+&spi3 {
+	pinctrl-0 = <&spi3_sck_pc10
+		     &spi3_miso_pc11 &spi3_mosi_pc12>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	cs-gpios = <&gpioc 6 (GPIO_ACTIVE_LOW | GPIO_PULL_DOWN)>;
+
+	m25p16: m25p16@0 {
+		compatible = "jedec,spi-nor";
+		has-dpd;
+		t-enter-dpd = <10000>;
+		t-exit-dpd = <35000>;
+		has-lock = <0x06>;
+
+		size = <0x200000>;
+		page-size = <256>;
+		reg = <0>;
+		spi-max-frequency = <75000000>;
+		status = "okay";
+		#wp-gpios = <&gpioc 8 (GPIO_ACTIVE_LOW | GPIO_PULL_DOWN)>;
+		hold-gpios = <&gpioc 7 (GPIO_ACTIVE_LOW | GPIO_PULL_DOWN)>;
+
+		jedec-id = [20 20 15];
 	};
 };
 
