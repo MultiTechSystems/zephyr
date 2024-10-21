@@ -1,0 +1,4 @@
+# Multitech xDot boards configuration
+
+config BOARD_MULTITECH_XDOT_REVA
+	select SOC_MAX32670

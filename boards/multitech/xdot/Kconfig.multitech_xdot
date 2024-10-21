@@ -1,5 +1,5 @@
 # Multitech xDot boards configuration
-
+# SPDX-License-Identifier: Apache-2.0
 
 config BOARD_MULTITECH_XDOT
-	select SOC_MAX32670
+	select SOC_STM32L151XC

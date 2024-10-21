@@ -1,7 +1,8 @@
-# Copyright (c) 2024 Analog Devices, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-board_runner_args(openocd --cmd-pre-init "source [find interface/cmsis-dap.cfg]")
-board_runner_args(openocd --cmd-pre-init "source [find target/max32670.cfg]")
+# keep first
+board_runner_args(stm32cubeprogrammer "--port=swd" "--reset-mode=hw")
 
+# keep first
+include(${ZEPHYR_BASE}/boards/common/stm32cubeprogrammer.board.cmake)
 include(${ZEPHYR_BASE}/boards/common/openocd.board.cmake)

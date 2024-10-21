@@ -2,4 +2,4 @@ board:
   name: multitech_xdot
   vendor: multitech
   socs:
-    - name: max32670
+    - name: stm32l151xc

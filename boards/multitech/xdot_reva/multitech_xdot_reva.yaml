@@ -1,0 +1,21 @@
+identifier: multitech_xdot_reva
+name: multitech_xdot_reva
+vendor: multitech
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - gpio
+  - serial
+  - trng
+  - i2c
+  - dma
+  - watchdog
+  - spi
+  - lora
+  - rtc
+ram: 160
+flash: 384

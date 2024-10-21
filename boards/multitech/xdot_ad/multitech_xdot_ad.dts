@@ -1,0 +1,231 @@
+/*
+ * Copyright (c) 2024 Analog Devices, Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include <adi/max32/max32670.dtsi>
+#include <adi/max32/max32670-pinctrl.dtsi>
+#include <zephyr/dt-bindings/gpio/adi-max32-gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/lora/sx126x.h>
+
+/ {
+	model = "Multitech xDot AD";
+	compatible = "adi,max32670evkit","multitech,xdot_ad";
+
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,sram = &sram3;
+		zephyr,flash = &flash0;
+		zephyr,flash-controller = &w25q80dv0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led1: led_1 {
+			gpios = <&gpio0 30 GPIO_ACTIVE_LOW>;
+			label = "Red LED";
+		};
+	};
+
+	switches {
+		compatible = "gpio-keys";
+		eepromen: eeprom-en {
+			gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;	
+		};
+		flash1cs: flash1-cs {
+			gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>;
+		};
+		flash2cs: flash2-cs {
+			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		pb1: pb1 {
+			gpios = <&gpio0 21 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "SW2";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	/* These aliases are provided for compatibility with samples */
+	aliases {
+		led0 = &led1;
+		sw0 = &pb1;
+		watchdog0 = &wdt0;
+		lora0 = &lora;
+		eeprom-0 = &eeprom0;
+		eeprom-switch = &eepromen;
+		flash1 = &w25q80dv1;
+		flash2 = &w25q80dv0;
+	};
+};
+
+&uart0 {
+	pinctrl-0 = <&uart0a_tx_p0_9 &uart0a_rx_p0_8>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	clock-source = <ADI_MAX32_PRPH_CLK_SRC_IBRO>;
+	data-bits = <8>;
+	parity = "none";
+	status = "okay";
+};
+
+&uart1 {
+	pinctrl-0 = <&uart1a_tx_p0_29 &uart1a_rx_p0_28>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	clock-source = <ADI_MAX32_PRPH_CLK_SRC_IBRO>;
+	data-bits = <8>;
+	parity = "none";
+	status = "okay";
+};
+
+&clk_ipo {
+	clock-frequency = <DT_FREQ_M(100)>;
+	status = "okay";
+};
+
+&clk_erfo {
+	compatible = "fixed-clock";
+	clock-frequency = <DT_FREQ_M(24)>;
+	status = "disabled";
+};
+
+&gcr {
+	clocks = <&clk_ipo>;
+	sysclk-prescaler = <1>;
+	status = "okay";
+};
+
+&clk_ibro {
+	status = "okay";
+};
+
+&clk_ertco {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&trng {
+	status = "okay";
+};
+
+
+&timer3 {
+	status = "disabled";
+};
+
+&lptimer0 {
+	status = "disabled";
+	clock-source = <ADI_MAX32_PRPH_CLK_SRC_ERTCO>;
+	counter {
+		status = "disabled";
+	};
+};
+
+&lptimer1 {
+	status = "disabled";
+	clock-source = <ADI_MAX32_PRPH_CLK_SRC_ERTCO>;
+	counter {
+		status = "disabled";
+	};
+};
+
+&i2c0 {
+	status = "okay";
+	pinctrl-0 = <&i2c0_scl_p0_6 &i2c0_sda_p0_7>;
+	pinctrl-names = "default";
+	#clock-frequency = <I2C_BITRATE_FAST>;
+
+	eeprom0: eeprom@51 {
+		compatible = "zephyr,i2c-target-eeprom";
+		reg = <0x51>;
+		status = "okay";
+		size = <128>;
+		#pagesize = <64>;
+		address-width = <16>;
+		#timeout = <5>;
+	};
+};
+
+&i2c1 {
+	status = "okay";
+	pinctrl-0 = <&i2c1_scl_p0_12 &i2c1_sda_p0_13>;
+	pinctrl-names = "default";
+	clock-frequency = <I2C_BITRATE_FAST>;
+
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&wdt0 {
+	status = "okay";
+};
+
+
+&spi0 {
+	status = "okay";
+	pinctrl-0 = <&spi0_mosi_p0_3 &spi0_miso_p0_2 &spi0_sck_p0_4 &spi0_ss0_p0_5>;
+	pinctrl-names = "default";
+		
+	#cs-gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
+	w25q80dv0: w25q80dv@0 {
+		compatible = "jedec,spi-nor";
+
+		size = <0x800000>;
+		reg = <0>;
+		spi-max-frequency = <75000000>;
+		status = "okay";
+
+		jedec-id = [ef 40 14];
+	};
+
+	w25q80dv1: w25q80dv@1 {
+		compatible ="jedec,spi-nor";
+		has-dpd;
+		t-enter-dpd = <3000>;
+		t-exit-dpd = <30000>;
+		size = <0x800000>;
+		reg = <1>;
+		spi-max-frequency = <75000000>;
+		status = "okay";
+
+		jedec-id = [ef 40 14];
+	};
+};
+
+&spi1 {
+		status = "okay";
+		pinctrl-0 = <&spi1_mosi_p0_15 &spi1_miso_p0_14 &spi1_sck_p0_16 &spi1_ss0_p0_17>;
+		pinctrl-names = "default";
+		
+        lora: spi1@0 {
+                compatible = "semtech,sx1262";
+                reg = <0>;
+                reset-gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
+                busy-gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;
+                dio1-gpios = <&gpio0 22 (GPIO_PULL_UP | GPIO_ACTIVE_HIGH)>;
+                antenna-enable-gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
+                dio2-tx-enable;
+                tcxo-power-startup-delay-ms = <4>;
+                spi-max-frequency = <DT_FREQ_M(1)>;
+        };
+};
+
+
