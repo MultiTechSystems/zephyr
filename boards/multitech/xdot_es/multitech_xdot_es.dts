@@ -21,6 +21,7 @@
 		zephyr,shell-uart = &uart0;
 		zephyr,sram = &sram3;
 		zephyr,flash = &flash0;
+		zephyr,flash-controller = &w25q80dv0;
 	};
 
 	leds {
@@ -51,6 +52,7 @@
 		sw0 = &pb1;
 		watchdog0 = &wdt0;
 		lora0 = &lora;
+		flash1 = &w25q80dv0;
 	};
 };
 
@@ -140,6 +142,29 @@
 
 &wdt0 {
 	status = "okay";
+};
+
+&spi0 {
+	status = "okay";
+	pinctrl-0 = <&spi0_sck_p0_4 &spi0_miso_p0_2 &spi0_mosi_p0_3>;
+	pinctrl-names = "default";
+		
+	cs-gpios = <&gpio0 5 GPIO_ACTIVE_LOW>;
+
+	w25q80dv0: w25q80dv@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		has-dpd;
+		t-enter-dpd = <30000>;
+		t-exit-dpd = <30000>;
+
+		size = <0x800000>;
+
+		spi-max-frequency = <50000000>;
+
+		jedec-id = [ef 40 14];
+		status = "okay";
+	};
 };
 
 &spi1 {

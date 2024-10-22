@@ -27,20 +27,17 @@
 	leds {
 		compatible = "gpio-leds";
 		led1: led_1 {
-			gpios = <&gpio0 30 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio0 30 GPIO_ACTIVE_HIGH>;
 			label = "Red LED";
 		};
 	};
 
 	switches {
-		compatible = "gpio-keys";
+		compatible = "gpio-leds";
 		eepromen: eeprom-en {
 			gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;	
 		};
-		flash1cs: flash1-cs {
-			gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>;
-		};
-		flash2cs: flash2-cs {
+		flash_cs_ext: flash-cs-ext {
 			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
 		};
 	};
@@ -62,8 +59,8 @@
 		lora0 = &lora;
 		eeprom-0 = &eeprom0;
 		eeprom-switch = &eepromen;
-		flash1 = &w25q80dv1;
-		flash2 = &w25q80dv0;
+		flash1 = &w25q80dv0;
+		flash-cs-ext = &flash_cs_ext;
 	};
 };
 
@@ -152,13 +149,13 @@
 	#clock-frequency = <I2C_BITRATE_FAST>;
 
 	eeprom0: eeprom@51 {
-		compatible = "zephyr,i2c-target-eeprom";
+		compatible = "atmel,at24";
 		reg = <0x51>;
 		status = "okay";
 		size = <128>;
-		#pagesize = <64>;
+		pagesize = <64>;
 		address-width = <16>;
-		#timeout = <5>;
+		timeout = <5>;
 	};
 };
 
@@ -181,38 +178,30 @@
 
 &spi0 {
 	status = "okay";
-	pinctrl-0 = <&spi0_mosi_p0_3 &spi0_miso_p0_2 &spi0_sck_p0_4 &spi0_ss0_p0_5>;
+	pinctrl-0 = <&spi0_sck_p0_4 &spi0_miso_p0_2 &spi0_mosi_p0_3>;
 	pinctrl-names = "default";
 		
-	#cs-gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
+	cs-gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
+
 	w25q80dv0: w25q80dv@0 {
 		compatible = "jedec,spi-nor";
-
-		size = <0x800000>;
 		reg = <0>;
-		spi-max-frequency = <75000000>;
-		status = "okay";
-
-		jedec-id = [ef 40 14];
-	};
-
-	w25q80dv1: w25q80dv@1 {
-		compatible ="jedec,spi-nor";
 		has-dpd;
-		t-enter-dpd = <3000>;
+		t-enter-dpd = <30000>;
 		t-exit-dpd = <30000>;
+
 		size = <0x800000>;
-		reg = <1>;
-		spi-max-frequency = <75000000>;
-		status = "okay";
+
+		spi-max-frequency = <1000000>;
 
 		jedec-id = [ef 40 14];
+		status = "okay";
 	};
 };
 
 &spi1 {
 		status = "okay";
-		pinctrl-0 = <&spi1_mosi_p0_15 &spi1_miso_p0_14 &spi1_sck_p0_16 &spi1_ss0_p0_17>;
+		pinctrl-0 = <&spi1_ss0_p0_17 &spi1_sck_p0_16 &spi1_miso_p0_14 &spi1_mosi_p0_15>;
 		pinctrl-names = "default";
 		
         lora: spi1@0 {

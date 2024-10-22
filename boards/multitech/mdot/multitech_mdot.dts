@@ -145,20 +145,22 @@
 
 	m25p16: m25p16@0 {
 		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <DT_FREQ_M(26)>;
+
+		size = <0x200000>;
+		page-size = <256>;
+
 		has-dpd;
 		t-enter-dpd = <10000>;
 		t-exit-dpd = <35000>;
 		has-lock = <0x06>;
-
-		size = <0x200000>;
-		page-size = <256>;
-		reg = <0>;
-		spi-max-frequency = <75000000>;
-		status = "okay";
+		
 		#wp-gpios = <&gpioc 8 (GPIO_ACTIVE_LOW | GPIO_PULL_DOWN)>;
 		hold-gpios = <&gpioc 7 (GPIO_ACTIVE_LOW | GPIO_PULL_DOWN)>;
 
 		jedec-id = [20 20 15];
+		status = "okay";
 	};
 };
 

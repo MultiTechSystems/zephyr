@@ -19,6 +19,7 @@
 		zephyr,shell-uart = &usart2;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
+		zephyr,flash-controller = &at45db321e;
 	};
 
 	leds: leds {
@@ -36,6 +37,11 @@
 			gpios = <&gpioc 13 GPIO_ACTIVE_LOW>;
 			zephyr,code = <INPUT_KEY_0>;
 		};
+		flash_switch: switch {
+			label = "User1";
+			gpios = <&gpioa 5 GPIO_ACTIVE_LOW>;
+			zephyr,code = <INPUT_KEY_1>;
+		};
 	};
 
 	aliases {
@@ -44,6 +50,8 @@
 		eeprom-0 = &eeprom;
 		watchdog0 = &iwdg;
 		lora0 = &lora;
+		flash-switch = &flash_switch;
+		flash1 = &at45db321e;
 	};
 };
 
@@ -52,18 +60,18 @@
 };
 
 &clk_hsi {
-	status = "disabled";
+	status = "okay";
 };
 
 &clk_hse {
 	clock-frequency = <DT_FREQ_M(24)>; /* 24MHz clock */
-	status = "okay";
+	status = "disabled";
 };
 
 &pll {
-	div = <3>;
+	div = <2>;
 	mul = <4>;
-	clocks = <&clk_hse>;
+	clocks = <&clk_hsi>;
 	status = "okay";
 };
 
@@ -88,6 +96,10 @@
 	status = "okay";
 };
 
+&spi1 {
+	status = "disabled";
+};
+
 &spi3 {
 	pinctrl-0 = <&spi3_nss_pa15 &spi3_sck_pb3 &spi3_miso_pb4 &spi3_mosi_pb5>;
 	pinctrl-names = "default";
@@ -109,10 +121,37 @@
 };
 
 &spi2 {
-	pinctrl-0 = <&spi2_nss_pb12 &spi2_sck_pb13
+	pinctrl-0 = <&spi2_sck_pb13
 		     &spi2_miso_pb14 &spi2_mosi_pb15>;
 	pinctrl-names = "default";
 	status = "okay";
+
+	cs-gpios = <&gpiob 12 (GPIO_PULL_DOWN | GPIO_ACTIVE_LOW)>;
+
+	at45db321e: at45db321e@0 {
+		#compatible = "atmel,at45";
+
+		spi-max-frequency = <DT_FREQ_M(15)>;
+		reg = <0>;
+		size = <0x2000000>;
+
+		#sector-size = <0x10000>;
+		#block-size = <0x1000>;
+		#page-size = <512>;
+		#use-udpd;
+		#enter-dpd-delay = <1000>;
+		#exit-dpd-delay = <180000>;
+
+
+		compatible = "jedec,spi-nor"; 
+		has-dpd;
+		t-enter-dpd = <1000>;
+		t-exit-dpd = <180000>;
+
+		status = "okay";
+
+		jedec-id = [1f 27 01];
+	};
 };
 
 &eeprom {
@@ -159,6 +198,10 @@
 			reg = <0x0007f800 DT_SIZE_K(2)>;
 		};
 	};
+};
+
+&timers2 {
+	status = "disabled";
 };
 
 &timers3 {
