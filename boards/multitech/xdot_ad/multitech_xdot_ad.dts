@@ -28,33 +28,23 @@
 		compatible = "gpio-leds";
 		led1: led_1 {
 			gpios = <&gpio0 30 GPIO_ACTIVE_HIGH>;
-			label = "Red LED";
+			label = "Blue LED";
 		};
 	};
 
 	switches {
 		compatible = "gpio-leds";
 		eepromen: eeprom-en {
-			gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;	
+			gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;
 		};
 		flash_cs_ext: flash-cs-ext {
 			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
 		};
 	};
 
-	buttons {
-		compatible = "gpio-keys";
-		pb1: pb1 {
-			gpios = <&gpio0 21 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-			label = "SW2";
-			zephyr,code = <INPUT_KEY_0>;
-		};
-	};
-
 	/* These aliases are provided for compatibility with samples */
 	aliases {
 		led0 = &led1;
-		sw0 = &pb1;
 		watchdog0 = &wdt0;
 		lora0 = &lora;
 		eeprom-0 = &eeprom0;
