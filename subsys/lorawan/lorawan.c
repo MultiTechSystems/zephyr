@@ -198,8 +198,8 @@ static void mlme_confirm_handler(MlmeConfirm_t *mlme_confirm)
 		LOG_INF("Joined network! DevAddr: %08x", mib_req.Param.DevAddr);
 		break;
 	case MLME_LINK_CHECK:
-		/* Not implemented */
-		LOG_INF("Link check not implemented yet!");
+		LOG_INF("Link check received");
+
 		break;
 	default:
 		break;
@@ -214,6 +214,21 @@ static void mlme_indication_handler(MlmeIndication_t *mlme_indication)
 {
 	LOG_DBG("Received MlmeIndication %d", mlme_indication->MlmeIndication);
 	last_mlme_indication_status = mlme_indication->Status;
+}
+
+
+int lorawan_req_link_check( )
+{
+	MlmeReq_t mlme_req;
+	mlme_req.Type = MLME_LINK_CHECK;
+	return LoRaMacMlmeRequest(&mlme_req);
+}
+
+int lorawan_req_device_time( )
+{
+	MlmeReq_t mlme_req;
+	mlme_req.Type = MLME_DEVICE_TIME;
+	return LoRaMacMlmeRequest(&mlme_req);
 }
 
 static LoRaMacStatus_t lorawan_join_otaa(
@@ -678,6 +693,10 @@ void lorawan_register_dr_changed_callback(lorawan_dr_changed_cb_t cb)
 	dr_changed_cb = cb;
 }
 
+void lorawan_cert_test_disable_dutycycle() {
+	LoRaMacTestSetDutyCycleOn(false);
+}
+
 int lorawan_start(void)
 {
 	LoRaMacStatus_t status;
@@ -716,6 +735,10 @@ int lorawan_start(void)
 	/* TODO: Move these to a proper location */
 	mib_req.Type = MIB_SYSTEM_MAX_RX_ERROR;
 	mib_req.Param.SystemMaxRxError = CONFIG_LORAWAN_SYSTEM_MAX_RX_ERROR;
+	LoRaMacMibSetRequestConfirm(&mib_req);
+
+	mib_req.Type = MIB_MIN_RX_SYMBOLS;
+	mib_req.Param.MinRxSymbols = CONFIG_LORAWAN_SYSTEM_MIN_RX_SYMBOLS;
 	LoRaMacMibSetRequestConfirm(&mib_req);
 
 	return 0;

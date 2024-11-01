@@ -19,7 +19,7 @@
 		zephyr,shell-uart = &usart2;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
-		zephyr,flash-controller = &at45db321e;
+		zephyr,flash-controller = &flash0;
 	};
 
 	leds: leds {
@@ -51,7 +51,6 @@
 		watchdog0 = &iwdg;
 		lora0 = &lora;
 		flash-switch = &flash_switch;
-		flash1 = &at45db321e;
 	};
 };
 
@@ -60,18 +59,18 @@
 };
 
 &clk_hsi {
-	status = "okay";
+	status = "disabled";
 };
 
 &clk_hse {
 	clock-frequency = <DT_FREQ_M(24)>; /* 24MHz clock */
-	status = "disabled";
+	status = "okay";
 };
 
 &pll {
-	div = <2>;
+	div = <3>;
 	mul = <4>;
-	clocks = <&clk_hsi>;
+	clocks = <&clk_hse>;
 	status = "okay";
 };
 
@@ -81,6 +80,13 @@
 	ahb-prescaler = <1>;
 	apb1-prescaler = <1>;
 	apb2-prescaler = <1>;
+};
+
+&usart1 {
+	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
 };
 
 &usart2 {
@@ -117,40 +123,6 @@
 				<&gpioc 13 (GPIO_PULL_UP | GPIO_ACTIVE_HIGH)>;	   /* DIO4 is D5 */
 
 		power-amplifier-output = "pa-boost";
-	};
-};
-
-&spi2 {
-	pinctrl-0 = <&spi2_sck_pb13
-		     &spi2_miso_pb14 &spi2_mosi_pb15>;
-	pinctrl-names = "default";
-	status = "okay";
-
-	cs-gpios = <&gpiob 12 (GPIO_PULL_DOWN | GPIO_ACTIVE_LOW)>;
-
-	at45db321e: at45db321e@0 {
-		#compatible = "atmel,at45";
-
-		spi-max-frequency = <DT_FREQ_M(15)>;
-		reg = <0>;
-		size = <0x2000000>;
-
-		#sector-size = <0x10000>;
-		#block-size = <0x1000>;
-		#page-size = <512>;
-		#use-udpd;
-		#enter-dpd-delay = <1000>;
-		#exit-dpd-delay = <180000>;
-
-
-		compatible = "jedec,spi-nor"; 
-		has-dpd;
-		t-enter-dpd = <1000>;
-		t-exit-dpd = <180000>;
-
-		status = "okay";
-
-		jedec-id = [1f 27 01];
 	};
 };
 

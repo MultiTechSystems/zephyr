@@ -12,6 +12,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#if defined(CONFIG_BOARD_MULTITECH_XDOT_AD)
+#include <zephyr/pm/device.h>
+#include <zephyr/pm/device_runtime.h>
+#endif
+
 #if defined(CONFIG_BOARD_ADAFRUIT_FEATHER_STM32F405)
 #define SPI_FLASH_TEST_REGION_OFFSET 0xf000
 #elif defined(CONFIG_BOARD_ARTY_A7_DESIGNSTART_FPGA_CORTEX_M1) || \
@@ -204,110 +209,33 @@ void multi_sector_test(const struct device *flash_dev)
 }
 #endif
 
-#if defined(CONFIG_BOARD_MULTITECH_XDOT_AD)
 
-#define LED0_NODE DT_ALIAS(eeprom_switch)
-static const struct gpio_dt_spec eeprom_switch = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
-
-#define FLASH_CS_EXT_NODE DT_ALIAS(flash_cs_ext)
-static const struct gpio_dt_spec flash_cs_switch = GPIO_DT_SPEC_GET(FLASH_CS_EXT_NODE, gpios);
-
-#endif
 
 int main(void)
 {
-	
-#if defined(CONFIG_BOARD_MULTITECH_XDOT_AD)
-
-	int err = 0;
-	
-	if (!gpio_is_ready_dt(&eeprom_switch)) {
-		printf("The load switch pin GPIO port is not ready.\n");
-	}
-
-	err = gpio_pin_configure_dt(&eeprom_switch, GPIO_OUTPUT_INACTIVE);
-	if (err != 0) {
-		printf("Configuring GPIO pin failed: %d\n", err);
-	}
-
-	err = gpio_pin_set_dt(&eeprom_switch, 1);
-	if (err != 0) {
-		printf("Setting GPIO pin level failed: %d\n", err);
-	}
-
-	if (!gpio_is_ready_dt(&flash_cs_switch)) {
-		printf("The load switch pin GPIO port is not ready.\n");
-	}
-
-	err = gpio_pin_configure_dt(&flash_cs_switch, GPIO_OUTPUT_LOW);
-	if (err != 0) {
-		printf("Configuring GPIO pin failed: %d\n", err);
-	}
-
-	err = gpio_pin_set_dt(&flash_cs_switch, 0);
-	if (err != 0) {
-		printf("Setting GPIO pin level failed: %d\n", err);
-	}
-
-	k_msleep(50);
-#endif
-
-#if 0
-	bool led_state = true;
-	int switch_value = 1;
-	int ret = 0;
-	int cnt = 0;
-
-	while (false) {
-		ret = gpio_pin_set_dt(&eeprom_switch, switch_value);
-		
-		if (ret < 0) {
-			return 0;
-		}
-		printf("LED state: %s %d\n", led_state ? "ON" : "OFF", switch_value);
-
-		led_state = !led_state;
-		switch_value = switch_value == 1 ? 0 : 1;
-		k_msleep(3000);
-
-		if (cnt++ > 5)
-			break;
-	}
-
-
-	gpio_pin_set_dt(&eeprom_switch, 1);
-
-	k_msleep(50);
-#endif
-
-	// gpio_pin_set_dt(&eeprom_switch, 0);
-
-	k_msleep(50);
-
 	const struct device *flash_dev = DEVICE_DT_GET(DT_ALIAS(flash1));
+
+
+#if defined(CONFIG_BOARD_MULTITECH_XDOT_AD)
+	const struct device *const mem_pwr_en = DEVICE_DT_GET(DT_NODELABEL(mem_pwr_en));
+
+	pm_device_runtime_get(mem_pwr_en);
+
+	if (pm_device_is_powered(mem_pwr_en)) {
+		printk("Internal EEPROM/FLASH is ON\n");
+	} else {
+		printk("Internal EEPROM/FLASH is OFF\n");
+	}
+
+	k_sleep(K_MSEC(200));
+
+	device_init(flash_dev);
+#endif
+
+
 
 	if (!device_is_ready(flash_dev)) {
 		printk("%s: device not ready.\n", flash_dev->name);
-
-#if 0
-		k_msleep(250);
-
-		while (true) {
-			ret = gpio_pin_set_dt(&eeprom_switch, switch_value);
-			
-			if (ret < 0) {
-				return 0;
-			}
-			printf("LED state: %s %d\n", led_state ? "ON" : "OFF", switch_value);
-
-			led_state = !led_state;
-			switch_value = switch_value == 1 ? 0 : 1;
-			k_msleep(3000);
-
-			if (cnt++ > 5)
-				break;
-		}
-#endif
 		return 0;
 	}
 
@@ -319,9 +247,10 @@ int main(void)
 	multi_sector_test(flash_dev);
 #endif
 
-	while (1) {
-		k_msleep(200);
-	}
+#if defined(CONFIG_BOARD_MULTITECH_XDOT_AD)
+	// turn off eeprom/flash domain
+	pm_device_runtime_put(mem_pwr_en);
+#endif
 
 	return 0;
 }

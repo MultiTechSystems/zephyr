@@ -250,6 +250,12 @@ void lorawan_register_dr_changed_callback(lorawan_dr_changed_cb_t cb);
  */
 int lorawan_join(const struct lorawan_join_config *config);
 
+int lorawan_req_link_check();
+
+int lorawan_req_device_time();
+
+void lorawan_cert_test_disable_dutycycle();
+
 /**
  * @brief Start the LoRaWAN stack
  *

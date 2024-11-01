@@ -16,6 +16,7 @@ supported:
   - watchdog
   - spi
   - lora
+  - flash
   - rtc
 ram: 160
 flash: 384
