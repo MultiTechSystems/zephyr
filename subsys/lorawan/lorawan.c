@@ -12,6 +12,7 @@
 #include "lw_priv.h"
 
 #include <LoRaMac.h>
+#include <LoRaMacTest.h>
 #include <Region.h>
 #include "nvm/lorawan_nvm.h"
 
