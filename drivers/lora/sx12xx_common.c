@@ -353,10 +353,24 @@ int sx12xx_lora_config(const struct device *dev,
 				  config->coding_rate, config->preamble_len,
 				  false, true, 0, 0, config->iq_inverted, 4000);
 	} else {
-		/* TODO: Get symbol timeout value from config parameters */
+		/* SYMBOL TIMEOUT 0 FOR A CONTINUOUS WINDOW, not 10.
+		 *
+		 * `Radio.Rx(0)` below is a CONTINUOUS receive, and
+		 * SX126xSetLoRaSymbNumTimeout(10) asks the part to validate a
+		 * preamble over ten symbols when LoRaWAN transmits eight. MTS's
+		 * driver zeroes it explicitly for exactly this case --
+		 * SxRadio1262::SetRxConfig: `if (rx_continuous) { symb_timeout
+		 * = 0; }` -- and that driver demodulates SF10BW500 on this
+		 * board where this one does not (12/13 against 0/8, same
+		 * gateway, same hour).
+		 *
+		 * The old value arrived with a `TODO: Get symbol timeout value
+		 * from config parameters` and the Zephyr LoRa API still has no
+		 * field for it, so 0 is the only value that is correct for
+		 * every caller of a continuous receive. */
 		Radio.SetRxConfig(MODEM_LORA, config->bandwidth,
 				  config->datarate, config->coding_rate,
-				  0, config->preamble_len, 10, false, 0,
+				  0, config->preamble_len, 0, false, 0,
 				  false, 0, 0, config->iq_inverted, true);
 	}
 
