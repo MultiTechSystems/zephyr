@@ -1,0 +1,33 @@
+/*
+ * Copyright (c) 2024 Analog Devices, Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+
+#include "../common/multitech_xdot.dtsi"
+
+/ {
+	model = "Multitech xDot AD";
+	compatible = "adi,max32670evkit","multitech,xdot_ad";
+
+	switches {
+		mem_pwr_en: mem_pwr_en {
+			compatible = "power-domain-gpio";
+			enable-gpios = <&gpio0 24 (GPIO_ACTIVE_LOW)>;
+        	zephyr,pm-device-runtime-auto;
+			status = "okay";
+		};
+
+		/* hold external flash cs high to talk to internal flash */
+		flash_cs_ext: flash_cs_ext {
+			compatible = "power-domain-gpio";
+			enable-gpios = <&gpio0 5 (GPIO_ACTIVE_HIGH)>;
+			status = "okay";
+		};
+	};
+};
+
+

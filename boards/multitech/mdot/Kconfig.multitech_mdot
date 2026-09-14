@@ -1,0 +1,5 @@
+# Multitech xDot boards configuration
+
+
+config BOARD_MULTITECH_MDOT
+	select SOC_STM32F411XE

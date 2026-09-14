@@ -1,0 +1,5 @@
+board:
+  name: multitech_mdot
+  vendor: multitech
+  socs:
+    - name: stm32f411xe

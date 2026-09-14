@@ -1,0 +1,5 @@
+board:
+  name: multitech_xdot_ad
+  vendor: multitech
+  socs:
+    - name: max32670

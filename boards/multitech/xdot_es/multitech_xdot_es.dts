@@ -1,0 +1,15 @@
+/*
+ * Copyright (c) 2024 Multitech Systems Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+
+#include "../common/multitech_xdot.dtsi"
+
+/ {
+	model = "Multitech xDot ES";
+	compatible = "adi,max32670evkit","multitech,xdot_es";
+};
+
