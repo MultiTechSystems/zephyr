@@ -16,8 +16,23 @@
 	compatible = "st,stm32f411re-nucleo";
 
 	chosen {
-		zephyr,console = &usart2;
-		zephyr,shell-uart = &usart2;
+		/*
+		 * usart1, on PA9/PA10 -- the mDot's debug UART.
+		 *
+		 * This file began as an adaptation of the Nucleo-F411RE (it still
+		 * declares that compatible) and inherited that board's UART
+		 * mapping, which put the console on usart2/PA2-PA3. On an mDot the
+		 * interface MCU is wired to PA9/PA10: mbed's target for this module
+		 * defines USBTX/USBRX there, and it is confirmed on hardware.
+		 *
+		 * The symptom of the old mapping is the expensive one: a correctly
+		 * programmed image prints NOTHING at any baud, and a break-and-DTR
+		 * reset produces nothing either, which is indistinguishable from a
+		 * target that never ran. It cost a bring-up before the pins were
+		 * questioned.
+		 */
+		zephyr,console = &usart1;
+		zephyr,shell-uart = &usart1;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 		zephyr,flash-controller = &m25p16;
@@ -75,7 +90,8 @@
 };
 
 &usart1 {
-	pinctrl-0 = <&usart1_tx_pb6 &usart1_rx_pb7>;
+	/* PA9/PA10, not the Nucleo's PB6/PB7 -- see the chosen node above. */
+	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
 	status = "okay";
