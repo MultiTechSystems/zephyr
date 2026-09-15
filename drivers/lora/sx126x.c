@@ -362,11 +362,73 @@ void SX126xSetRfTxPower(int8_t power)
 	sx126x_set_tx_params(power, RADIO_RAMP_40_US);
 }
 
-void SX126xWaitOnBusy(void)
+/* How long BUSY may legitimately stay high. The longest documented wait is the
+ * cold-start oscillator and image calibration, a few milliseconds; 100 ms is
+ * two orders of margin on anything the part does by itself. */
+#define SX126X_BUSY_TIMEOUT_MS 100
+
+static bool sx126x_wait_busy_low(int timeout_ms)
 {
-	while (sx126x_is_busy(&dev_data)) {
+	for (int i = 0; i < timeout_ms; i++) {
+		if (!sx126x_is_busy(&dev_data)) {
+			return true;
+		}
 		k_sleep(K_MSEC(1));
 	}
+	return !sx126x_is_busy(&dev_data);
+}
+
+void SX126xWaitOnBusy(void)
+{
+	if (sx126x_wait_busy_low(SX126X_BUSY_TIMEOUT_MS)) {
+		return;
+	}
+
+	/* BUSY HIGH FOR 100 ms MEANS THE PART IS NOT GOING TO ANSWER THIS WAIT,
+	 * AND THE COMMONEST REASON IS THAT IT IS ASLEEP WHILE WE BELIEVE IT IS
+	 * NOT.
+	 *
+	 * `SX126xCheckDeviceReady` decides whether to wake the chip from
+	 * `dev_data.mode` -- a variable in MCU RAM. Anything that resets the MCU
+	 * without resetting the radio (a soft reboot, a debug-probe NRST after
+	 * flashing, a watchdog) re-initialises that variable to MODE_STDBY_RC
+	 * while the SX1262 keeps whatever state it was in. If it was asleep, the
+	 * wake is skipped and this function used to spin FOREVER -- BUSY only
+	 * drops once NSS goes low, and nothing here was lowering it.
+	 *
+	 * It is not a crash and leaves nothing to find: the caller is blocked in
+	 * a k_sleep loop, so any thread sharing it -- typically the application's
+	 * main thread, with the console on it -- goes silent with no fault and no
+	 * output. Measured on a MultiTech xDot ES (MAX32670 + SX1262): reset,
+	 * silence from the first instruction, and a power cycle the only recovery.
+	 *
+	 * The mbed SX1262 driver cannot reach this state because it lowers NSS
+	 * BEFORE testing BUSY, unconditionally, on every command -- it never asks
+	 * whether the part is asleep, it just does the thing that works either
+	 * way. So: toggle NSS the same way here and wait once more. A part that
+	 * still holds BUSY after that is a hardware fault, and the error says so
+	 * instead of hanging. */
+	uint8_t req[] = { RADIO_GET_STATUS, 0 };
+	const struct spi_buf tx_buf = { .buf = req, .len = sizeof(req) };
+	const struct spi_buf_set tx = { .buffers = &tx_buf, .count = 1 };
+
+	LOG_WRN("BUSY high for %d ms; waking the device and retrying",
+		SX126X_BUSY_TIMEOUT_MS);
+
+	/* NOT SX126xWakeup(): that calls back into this function. */
+	if (spi_write_dt(&dev_config.bus, &tx) < 0) {
+		LOG_ERR("BUSY recovery: SPI write failed");
+		return;
+	}
+
+	if (sx126x_wait_busy_low(SX126X_BUSY_TIMEOUT_MS)) {
+		LOG_WRN("device woke; it was asleep while we believed otherwise");
+		dev_data.mode = MODE_STDBY_RC;
+		return;
+	}
+
+	LOG_ERR("BUSY still high after a wake attempt -- the radio is not "
+		"responding; a power cycle may be required");
 }
 
 void SX126xWakeup(void)
