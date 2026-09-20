@@ -64,7 +64,16 @@
 };
 
 &clk_lsi {
+	/* Unused now the RTC takes the LSE crystal; left off to save the power. */
 	status = "disabled";
+};
+
+/* 32.768 kHz crystal, fitted on this board -- confirmed with Jason 2026-09-20,
+ * and mbed agrees: MTS_MDOT_F411RE leaves target.lse_available at 1, where
+ * MTS_DRAGONFLY_F411RE overrides it to 0 for a board without one.
+ */
+&clk_lse {
+	status = "okay";
 };
 
 &clk_hse {
@@ -180,8 +189,33 @@
 	};
 };
 
+/* THE RTC RUNS ON THE LSE CRYSTAL, NOT THE INTERNAL RC.
+ *
+ * This said STM32_SRC_LSI RTC_SEL(2) -- the internal RC -- and declared no
+ * clk_lse node at all, so the 32.768 kHz crystal this board carries could not
+ * be reached. An LSI is a percent-level part: 1% is 10,000 ppm against a
+ * crystal specified at 20 ppm, so any Class B ping-slot budget computed on it
+ * is meaningless, and the error is 500x the effects we spend days measuring.
+ *
+ * It was almost certainly inherited rather than chosen: every upstream ST F4
+ * board, nucleo_f411re included, selects LSI here, and a Nucleo often ships
+ * with its LSE crystal footprint unpopulated. Correct for those boards. Not
+ * correct for this one.
+ *
+ * It stayed invisible because nothing measured runs through it -- the timing
+ * work is mbed-side on the MAX32670 xDot, so no number this tree produces has
+ * ever depended on this selector.
+ *
+ * NOTE FOR THE FIRST BOOT ON REAL HARDWARE. Zephyr's STM32 clock driver waits
+ * for LSE with an UNBOUNDED spin (clock_stm32_ll_common.c, "while
+ * (!LL_RCC_LSE_IsReady()) {}"). If the crystal is absent or will not start, the
+ * board hangs there before main with no console output and no fault -- which
+ * reads as dead hardware. That is the same failure shape that bit the xDot ES
+ * ERTCO wait. If this board goes silent after this change, that loop is where
+ * it is.
+ */
 &rtc {
 	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x10000000>,
-		 <&rcc STM32_SRC_LSI RTC_SEL(2)>;
+		 <&rcc STM32_SRC_LSE RTC_SEL(1)>;
 	status = "okay";
 };
