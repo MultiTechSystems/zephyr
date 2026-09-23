@@ -31,6 +31,24 @@ int sx12xx_lora_recv(const struct device *dev, uint8_t *data, uint8_t size,
 
 int sx12xx_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user_data);
 
+#if defined(CONFIG_LORA_SX126X)
+/*
+ * A receive whose EMPTY end is decided by the radio, not by a kernel timer.
+ *
+ * `radio_timeout_us` is programmed into the SX126x as a time (SetRx, 15.625 us
+ * RTC steps) with the RX timer stopped on preamble detection, so an empty
+ * window ends at the radio's timeout (-ETIMEDOUT) and a detected frame is
+ * received to its end. `backstop` bounds the whole call for a frame whose
+ * preamble was detected (-EAGAIN), and should be sized for the longest frame.
+ *
+ * Declared here and not in <zephyr/drivers/lora.h> deliberately: the public
+ * API has no receive-window concept, and this is the one caller's need.
+ */
+int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size,
+			   uint32_t radio_timeout_us, k_timeout_t backstop,
+			   int16_t *rssi, int8_t *snr);
+#endif
+
 int sx12xx_lora_config(const struct device *dev,
 		       struct lora_modem_config *config);
 

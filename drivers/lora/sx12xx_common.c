@@ -13,6 +13,9 @@
 
 /* LoRaMac-node specific includes */
 #include <radio.h>
+#if defined(CONFIG_LORA_SX126X)
+#include <sx126x/sx126x.h>
+#endif
 
 #include "sx12xx_common.h"
 
@@ -192,6 +195,26 @@ static void sx12xx_ev_rx_error(void)
 	}
 }
 
+/*
+ * The radio's own RX timeout, and a header error, both arrive here. Neither
+ * happens on a continuous receive (SetRx 0xFFFFFF has no timer), so only the
+ * timed synchronous receive can see one.
+ */
+static void sx12xx_ev_rx_timeout(void)
+{
+	struct k_poll_signal *sig = dev_data.operation_done;
+
+	if (dev_data.async_rx_cb) {
+		return;
+	}
+
+	if (modem_release(&dev_data)) {
+		if (sig) {
+			k_poll_signal_raise(sig, -ETIMEDOUT);
+		}
+	}
+}
+
 int sx12xx_lora_send(const struct device *dev, uint8_t *data,
 		     uint32_t data_len)
 {
@@ -307,6 +330,62 @@ int sx12xx_lora_recv(const struct device *dev, uint8_t *data, uint8_t size,
 	return size;
 }
 
+#if defined(CONFIG_LORA_SX126X)
+int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size,
+			   uint32_t radio_timeout_us, k_timeout_t backstop,
+			   int16_t *rssi, int8_t *snr)
+{
+	struct k_poll_signal done = K_POLL_SIGNAL_INITIALIZER(done);
+	struct k_poll_event evt = K_POLL_EVENT_INITIALIZER(
+		K_POLL_TYPE_SIGNAL,
+		K_POLL_MODE_NOTIFY_ONLY,
+		&done);
+	/* 15.625 us per step = 1000/64 us. 0 would mean single-shot with no
+	 * timeout and 0xFFFFFF continuous, so neither may be produced here.
+	 */
+	uint64_t steps = DIV_ROUND_UP((uint64_t)radio_timeout_us * 64U, 1000U);
+	int ret;
+
+	steps = CLAMP(steps, 1U, 0xFFFFFEU);
+
+	if (!modem_acquire(&dev_data)) {
+		return -EBUSY;
+	}
+
+	dev_data.async_rx_cb = NULL;
+	dev_data.operation_done = &done;
+	dev_data.rx_params.buf = data;
+	dev_data.rx_params.size = &size;
+	dev_data.rx_params.rssi = rssi;
+	dev_data.rx_params.snr = snr;
+
+	Radio.SetMaxPayloadLength(MODEM_LORA, 255);
+	/* What RadioRx() does, except the timeout: RadioRx() can only program
+	 * 0xFFFFFF (continuous) or a whole-millisecond software timer.
+	 */
+	SX126xSetDioIrqParams(IRQ_RADIO_ALL, IRQ_RADIO_ALL,
+			      IRQ_RADIO_NONE, IRQ_RADIO_NONE);
+	SX126xSetStopRxTimerOnPreambleDetect(true);
+	SX126xSetRx((uint32_t)steps);
+
+	ret = k_poll(&evt, 1, backstop);
+	if (ret < 0) {
+		if (!modem_release(&dev_data)) {
+			/* An RX event is being handled; wait for its result. */
+			k_poll(&evt, 1, K_FOREVER);
+			return (done.result < 0) ? done.result : size;
+		}
+		return -EAGAIN;
+	}
+
+	if (done.result < 0) {
+		return done.result;
+	}
+
+	return size;
+}
+#endif
+
 int sx12xx_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user_data)
 {
 	/* Cancel ongoing reception */
@@ -401,6 +480,7 @@ int sx12xx_init(const struct device *dev)
 	dev_data.events.TxDone = sx12xx_ev_tx_done;
 	dev_data.events.RxDone = sx12xx_ev_rx_done;
 	dev_data.events.RxError = sx12xx_ev_rx_error;
+	dev_data.events.RxTimeout = sx12xx_ev_rx_timeout;
 	/* TX timeout event raises at the end of the test CW transmission */
 	dev_data.events.TxTimeout = sx12xx_ev_tx_timed_out;
 	Radio.Init(&dev_data.events);
