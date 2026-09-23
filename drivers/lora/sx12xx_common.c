@@ -332,7 +332,7 @@ int sx12xx_lora_recv(const struct device *dev, uint8_t *data, uint8_t size,
 
 #if defined(CONFIG_LORA_SX126X)
 int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size,
-			   uint32_t radio_timeout_us, k_timeout_t backstop,
+			   sx12xx_rx_arm_t arm, void *arm_ctx, k_timeout_t backstop,
 			   int16_t *rssi, int8_t *snr)
 {
 	struct k_poll_signal done = K_POLL_SIGNAL_INITIALIZER(done);
@@ -340,13 +340,8 @@ int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size
 		K_POLL_TYPE_SIGNAL,
 		K_POLL_MODE_NOTIFY_ONLY,
 		&done);
-	/* 15.625 us per step = 1000/64 us. 0 would mean single-shot with no
-	 * timeout and 0xFFFFFF continuous, so neither may be produced here.
-	 */
-	uint64_t steps = DIV_ROUND_UP((uint64_t)radio_timeout_us * 64U, 1000U);
+	uint64_t steps;
 	int ret;
-
-	steps = CLAMP(steps, 1U, 0xFFFFFEU);
 
 	if (!modem_acquire(&dev_data)) {
 		return -EBUSY;
@@ -366,6 +361,16 @@ int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size
 	SX126xSetDioIrqParams(IRQ_RADIO_ALL, IRQ_RADIO_ALL,
 			      IRQ_RADIO_NONE, IRQ_RADIO_NONE);
 	SX126xSetStopRxTimerOnPreambleDetect(true);
+	/* Everything above may wake the part from sleep and waits on BUSY with
+	 * 1 ms sleeps, so it costs milliseconds -- measured as a window opening
+	 * ~5-10 ms late on an xDot ES. Only SetRx is left to issue: the caller
+	 * waits for its instant here and says how long the radio should listen,
+	 * so nothing sleeps between that instant and the command.
+	 * 15.625 us per step = 1000/64 us; 0 would mean single-shot with no
+	 * timeout and 0xFFFFFF continuous, so neither may be produced.
+	 */
+	steps = DIV_ROUND_UP((uint64_t)arm(arm_ctx) * 64U, 1000U);
+	steps = CLAMP(steps, 1U, 0xFFFFFEU);
 	SX126xSetRx((uint32_t)steps);
 
 	ret = k_poll(&evt, 1, backstop);

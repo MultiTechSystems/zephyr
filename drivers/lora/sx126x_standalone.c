@@ -50,6 +50,18 @@ void sx126x_dio1_irq_disable(struct sx126x_data *dev_data)
 				     GPIO_INT_DISABLE);
 }
 
+/*
+ * Called in ISR context on every DIO1 edge, before the IRQ is handed to the
+ * work queue. A LoRaWAN receive window is timed from the END of the uplink on
+ * air, and by the time the work item has run Radio.IrqProcess() and the
+ * sender's k_poll has returned, that instant is gone -- measured 12-17 ms late
+ * on an xDot ES, enough to miss an SF7BW250 preamble entirely. An application
+ * that needs the instant stamps it here with its own clock.
+ */
+__weak void sx126x_dio1_isr_hook(void)
+{
+}
+
 static void sx126x_dio1_irq_callback(const struct device *dev,
 				     struct gpio_callback *cb, uint32_t pins)
 {
@@ -57,6 +69,7 @@ static void sx126x_dio1_irq_callback(const struct device *dev,
 						    dio1_irq_callback);
 
 	if (pins & BIT(sx126x_gpio_dio1.pin)) {
+		sx126x_dio1_isr_hook();
 		k_work_submit(&dev_data->dio1_irq_work);
 	}
 }
