@@ -54,6 +54,27 @@ int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size
 			   int16_t *rssi, int8_t *snr);
 #endif
 
+#if defined(CONFIG_LORA_SX126X)
+/*
+ * LoRaWAN GFSK (e.g. AS923/EU868 DR7). Selects the FSK modem for one
+ * direction; lora_config() selects LoRa again. `bandwidth` and
+ * `bandwidth_afc` are single-sided, in Hz; `preamble_len` is in bytes.
+ */
+struct sx12xx_fsk_config {
+	uint32_t frequency;
+	uint32_t bitrate;
+	uint32_t fdev;
+	uint32_t bandwidth;
+	uint32_t bandwidth_afc;
+	uint16_t preamble_len;
+	int8_t tx_power;
+	bool tx;
+};
+
+int sx12xx_fsk_config(const struct device *dev,
+		      const struct sx12xx_fsk_config *config);
+#endif
+
 int sx12xx_lora_config(const struct device *dev,
 		       struct lora_modem_config *config);
 

@@ -39,6 +39,14 @@ static struct sx12xx_data {
 	void *async_user_data;
 	RadioEvents_t events;
 	struct lora_modem_config tx_cfg;
+	/* Which modem the last configuration selected, per direction. Every
+	 * path below that re-arms the radio names a modem, and naming LoRa
+	 * while the part is in GFSK rewrites its packet parameters as LoRa.
+	 */
+	RadioModems_t rx_modem;
+	RadioModems_t tx_modem;
+	uint32_t fsk_tx_bitrate;
+	uint16_t fsk_tx_preamble;
 	atomic_t modem_usage;
 	struct sx12xx_rx_params rx_params;
 } dev_data;
@@ -237,12 +245,18 @@ int sx12xx_lora_send(const struct device *dev, uint8_t *data,
 	}
 
 	/* Calculate expected airtime of the packet */
-	air_time = Radio.TimeOnAir(MODEM_LORA,
-				   dev_data.tx_cfg.bandwidth,
-				   dev_data.tx_cfg.datarate,
-				   dev_data.tx_cfg.coding_rate,
-				   dev_data.tx_cfg.preamble_len,
-				   0, data_len, true);
+	if (dev_data.tx_modem == MODEM_FSK) {
+		air_time = Radio.TimeOnAir(MODEM_FSK, 0, dev_data.fsk_tx_bitrate,
+					   0, dev_data.fsk_tx_preamble,
+					   false, data_len, true);
+	} else {
+		air_time = Radio.TimeOnAir(MODEM_LORA,
+					   dev_data.tx_cfg.bandwidth,
+					   dev_data.tx_cfg.datarate,
+					   dev_data.tx_cfg.coding_rate,
+					   dev_data.tx_cfg.preamble_len,
+					   0, data_len, true);
+	}
 	LOG_DBG("Expected air time of %d bytes = %dms", data_len, air_time);
 
 	/* Wait for the packet to finish transmitting.
@@ -272,7 +286,7 @@ int sx12xx_lora_send_async(const struct device *dev, uint8_t *data,
 	/* Store signal */
 	dev_data.operation_done = async;
 
-	Radio.SetMaxPayloadLength(MODEM_LORA, data_len);
+	Radio.SetMaxPayloadLength(dev_data.tx_modem, data_len);
 
 	Radio.Send(data, data_len);
 
@@ -303,7 +317,7 @@ int sx12xx_lora_recv(const struct device *dev, uint8_t *data, uint8_t size,
 	dev_data.rx_params.rssi = rssi;
 	dev_data.rx_params.snr = snr;
 
-	Radio.SetMaxPayloadLength(MODEM_LORA, 255);
+	Radio.SetMaxPayloadLength(dev_data.rx_modem, 255);
 	Radio.Rx(0);
 
 	ret = k_poll(&evt, 1, timeout);
@@ -354,7 +368,7 @@ int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size
 	dev_data.rx_params.rssi = rssi;
 	dev_data.rx_params.snr = snr;
 
-	Radio.SetMaxPayloadLength(MODEM_LORA, 255);
+	Radio.SetMaxPayloadLength(dev_data.rx_modem, 255);
 	/* What RadioRx() does, except the timeout: RadioRx() can only program
 	 * 0xFFFFFF (continuous) or a whole-millisecond software timer.
 	 */
@@ -412,7 +426,7 @@ int sx12xx_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user
 	dev_data.async_user_data = user_data;
 
 	/* Start reception */
-	Radio.SetMaxPayloadLength(MODEM_LORA, 255);
+	Radio.SetMaxPayloadLength(dev_data.rx_modem, 255);
 	Radio.Rx(0);
 
 	return 0;
@@ -429,6 +443,7 @@ int sx12xx_lora_config(const struct device *dev,
 	Radio.SetChannel(config->frequency);
 
 	if (config->tx) {
+		dev_data.tx_modem = MODEM_LORA;
 		/* Store TX config locally for airtime calculations */
 		memcpy(&dev_data.tx_cfg, config, sizeof(dev_data.tx_cfg));
 		/* Configure radio driver */
@@ -437,6 +452,7 @@ int sx12xx_lora_config(const struct device *dev,
 				  config->coding_rate, config->preamble_len,
 				  false, true, 0, 0, config->iq_inverted, 4000);
 	} else {
+		dev_data.rx_modem = MODEM_LORA;
 		/* SYMBOL TIMEOUT 0 FOR A CONTINUOUS WINDOW, not 10.
 		 *
 		 * `Radio.Rx(0)` below is a CONTINUOUS receive, and
@@ -464,6 +480,48 @@ int sx12xx_lora_config(const struct device *dev,
 	return 0;
 }
 
+#if defined(CONFIG_LORA_SX126X)
+int sx12xx_fsk_config(const struct device *dev,
+		      const struct sx12xx_fsk_config *config)
+{
+	/* LoRaWAN GFSK is loramac-node's own MODEM_FSK branch, unchanged: sync
+	 * word C1 94 C1, whitening seed 0x01FF, CRC-16 CCITT, variable length,
+	 * Gaussian BT 1.0, preamble in bytes. It matches what the SX1302 HAL
+	 * transmits. The Zephyr LoRa API only ever reached the LoRa branch, so
+	 * this is the way in; after it the ordinary send/recv calls work,
+	 * because they now name the modem configured here.
+	 */
+	if (!modem_acquire(&dev_data)) {
+		return -EBUSY;
+	}
+
+	Radio.SetChannel(config->frequency);
+
+	if (config->tx) {
+		dev_data.tx_modem = MODEM_FSK;
+		dev_data.fsk_tx_bitrate = config->bitrate;
+		dev_data.fsk_tx_preamble = config->preamble_len;
+		/* tx_cfg.frequency is what lora_send checks for "configured" */
+		dev_data.tx_cfg.frequency = config->frequency;
+		Radio.SetTxConfig(MODEM_FSK, config->tx_power, config->fdev, 0,
+				  config->bitrate, 0, config->preamble_len,
+				  false, true, false, 0, false, 4000);
+	} else {
+		dev_data.rx_modem = MODEM_FSK;
+		/* `bandwidth` is single-sided; radio.c doubles it for the part.
+		 * Continuous and symbol timeout 0, as the LoRa path: a timed
+		 * receive bounds the window through SetRx instead.
+		 */
+		Radio.SetRxConfig(MODEM_FSK, config->bandwidth, config->bitrate,
+				  0, config->bandwidth_afc, config->preamble_len,
+				  0, false, 0, true, false, 0, false, true);
+	}
+
+	modem_release(&dev_data);
+	return 0;
+}
+#endif
+
 int sx12xx_lora_test_cw(const struct device *dev, uint32_t frequency,
 			int8_t tx_power,
 			uint16_t duration)
@@ -480,6 +538,9 @@ int sx12xx_lora_test_cw(const struct device *dev, uint32_t frequency,
 int sx12xx_init(const struct device *dev)
 {
 	atomic_set(&dev_data.modem_usage, 0);
+	/* MODEM_FSK is 0, so a zeroed dev_data would name FSK */
+	dev_data.rx_modem = MODEM_LORA;
+	dev_data.tx_modem = MODEM_LORA;
 
 	dev_data.dev = dev;
 	dev_data.events.TxDone = sx12xx_ev_tx_done;
