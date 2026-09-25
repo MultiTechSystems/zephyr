@@ -243,6 +243,34 @@ static int api_configure(const struct device *dev, const struct uart_config *uar
 		if (err < 0) {
 			return -ENOTSUP;
 		}
+		/*
+		 * OSR = 0 HALVES THE BAUD RATE, so refuse to leave it there.
+		 *
+		 * MXC_UART_SetFrequency() assigns osr = 5 and then overwrites it
+		 * with 0 in its IBRO, ERTCO and INRO branches for any baud above
+		 * 2400. The divisor is computed separately, in
+		 * MXC_UART_RevB_SetFrequency(), as clkdiv = input_clock / baud --
+		 * with no oversampling term at all, as that function's own comment
+		 * says. The two model different hardware: at osr = 0 the part
+		 * divides by TWICE clkdiv, so a UART configured for 115200 on IBRO
+		 * transmits and receives at exactly 57600.
+		 *
+		 * Measured on a MAX32670 with clkdiv left as the HAL computed it
+		 * (64 for IBRO/115200): osr 0 reads clean only at 57600, osr 1-7
+		 * only at 115200. The non-zero values are equivalent for a standard
+		 * UART -- the field is meaningful for the LPUART, which is why
+		 * uart_revb.c defers it to the chip-specific driver -- so restoring
+		 * the HAL's own default of 5 changes nothing except the broken case.
+		 *
+		 * SetFrequency also returns the REQUESTED baud rather than a value
+		 * read back, so nothing above this line can detect the discrepancy.
+		 * Fixing it in MSDK is the real repair; this keeps the rate correct
+		 * from the first byte until that lands, rather than leaving every
+		 * application to discover it and correct the register afterwards.
+		 */
+		if ((regs->osr & MXC_F_UART_OSR_OSR) == 0u) {
+			regs->osr = 5u;
+		}
 		/* In case of success keep configuration */
 		data->conf.baudrate = uart_cfg->baudrate;
 	}
