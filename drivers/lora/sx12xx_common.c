@@ -468,9 +468,14 @@ int sx12xx_lora_config(const struct device *dev,
 		 * from config parameters` and the Zephyr LoRa API still has no
 		 * field for it, so 0 is the only value that is correct for
 		 * every caller of a continuous receive. */
+		/* fixLen/payloadLen from implicit_len: 0 keeps the explicit
+		 * header; N receives an implicit-header frame of N octets (a
+		 * Class B beacon). crcOn stays false either way -- LoRaWAN
+		 * downlinks and beacons carry no PHY payload CRC. */
 		Radio.SetRxConfig(MODEM_LORA, config->bandwidth,
 				  config->datarate, config->coding_rate,
-				  0, config->preamble_len, 0, false, 0,
+				  0, config->preamble_len, 0,
+				  config->implicit_len != 0, config->implicit_len,
 				  false, 0, 0, config->iq_inverted, true);
 	}
 

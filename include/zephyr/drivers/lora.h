@@ -106,6 +106,16 @@ struct lora_modem_config {
 	 * interacting with a public network.
 	 */
 	bool public_network;
+
+	/**
+	 * Receive only: 0 for the ordinary explicit LoRa header (the length
+	 * travels in the header); N > 0 for an IMPLICIT header of exactly N
+	 * payload octets, as LoRaWAN Class B beacons are sent (TS001-1.0.4
+	 * section 13.1, RP002 beacon layouts). The receiver cannot learn the
+	 * length from an implicit frame, so it must be told. Zero-initialised
+	 * configs keep today's behaviour.
+	 */
+	uint8_t implicit_len;
 };
 
 /**
