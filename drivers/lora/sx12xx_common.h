@@ -31,9 +31,15 @@ int sx12xx_lora_recv(const struct device *dev, uint8_t *data, uint8_t size,
 
 int sx12xx_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user_data);
 
-#if defined(CONFIG_LORA_SX126X)
+#if defined(CONFIG_LORA_SX126X) || defined(CONFIG_LORA_SX127X)
 /*
  * A receive whose EMPTY end is decided by the radio, not by a kernel timer.
+ *
+ * SX127x: the same contract in RX single mode. The last lora_config receive
+ * configuration is re-applied single with the symbol timeout written after
+ * arm() returns (listen time / symbol time, 4..1023 symbols), and restored
+ * continuous when the call ends. sx12xx_rx_armed_hook() is called right after
+ * the receive command, so a caller can measure arm() -> radio in RX.
  *
  * The radio is woken and configured first; then `arm(arm_ctx)` is called, which
  * waits for the instant the window must open and returns how long the radio
@@ -52,6 +58,12 @@ typedef uint32_t (*sx12xx_rx_arm_t)(void *ctx);
 int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size,
 			   sx12xx_rx_arm_t arm, void *arm_ctx, k_timeout_t backstop,
 			   int16_t *rssi, int8_t *snr);
+#endif
+
+#if defined(CONFIG_LORA_SX127X)
+/* Weak, overridden by an application that stamps radio instants. */
+void sx12xx_rx_armed_hook(void);
+void sx127x_dio_isr_hook(unsigned int dio);
 #endif
 
 #if defined(CONFIG_LORA_SX126X)

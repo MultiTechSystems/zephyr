@@ -39,6 +39,10 @@ static struct sx12xx_data {
 	void *async_user_data;
 	RadioEvents_t events;
 	struct lora_modem_config tx_cfg;
+	/* The last LoRa receive configuration, so a timed receive can re-apply
+	 * it in single mode and restore it continuous afterwards (SX127x).
+	 */
+	struct lora_modem_config rx_cfg;
 	/* Which modem the last configuration selected, per direction. Every
 	 * path below that re-arms the radio names a modem, and naming LoRa
 	 * while the part is in GFSK rewrites its packet parameters as LoRa.
@@ -405,6 +409,100 @@ int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size
 }
 #endif
 
+#if defined(CONFIG_LORA_SX127X)
+__weak void sx12xx_rx_armed_hook(void)
+{
+}
+
+/* The SX127x symbol timeout: RegModemConfig2 bits 1:0 (MSB) and
+ * RegSymbTimeoutLsb, 10 bits of symbols. The same registers on SX1272 and
+ * SX1276 (loramac-node sx127{2,6}Regs-LoRa.h).
+ */
+#define SX127X_REG_LR_MODEMCONFIG2   0x1E
+#define SX127X_REG_LR_SYMBTIMEOUTLSB 0x1F
+
+static const uint16_t sx127x_bw_khz[] = { [BW_125_KHZ] = 125, [BW_250_KHZ] = 250,
+					  [BW_500_KHZ] = 500 };
+
+static void sx127x_apply_rx_cfg(uint16_t symb_timeout, bool continuous)
+{
+	const struct lora_modem_config *c = &dev_data.rx_cfg;
+
+	Radio.SetRxConfig(MODEM_LORA, c->bandwidth, c->datarate, c->coding_rate,
+			  0, c->preamble_len, symb_timeout,
+			  c->implicit_len != 0, c->implicit_len,
+			  false, 0, 0, c->iq_inverted, continuous);
+}
+
+int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size,
+			   sx12xx_rx_arm_t arm, void *arm_ctx, k_timeout_t backstop,
+			   int16_t *rssi, int8_t *snr)
+{
+	struct k_poll_signal done = K_POLL_SIGNAL_INITIALIZER(done);
+	struct k_poll_event evt = K_POLL_EVENT_INITIALIZER(
+		K_POLL_TYPE_SIGNAL,
+		K_POLL_MODE_NOTIFY_ONLY,
+		&done);
+	uint32_t listen_us;
+	uint32_t sym_us;
+	uint32_t symbols;
+	int ret;
+
+	if (dev_data.rx_modem != MODEM_LORA || dev_data.rx_cfg.frequency == 0 ||
+	    dev_data.rx_cfg.bandwidth > BW_500_KHZ) {
+		return -EINVAL;
+	}
+	if (!modem_acquire(&dev_data)) {
+		return -EBUSY;
+	}
+
+	dev_data.async_rx_cb = NULL;
+	dev_data.operation_done = &done;
+	dev_data.rx_params.buf = data;
+	dev_data.rx_params.size = &size;
+	dev_data.rx_params.rssi = rssi;
+	dev_data.rx_params.snr = snr;
+
+	/* SINGLE mode, so the radio ends an empty window itself with RxTimeout
+	 * (DIO1) and a detected preamble is received to its end. Everything that
+	 * costs SPI time happens here, before the caller's instant; the symbol
+	 * timeout is written after it, from the duration arm() returns.
+	 */
+	Radio.SetMaxPayloadLength(dev_data.rx_modem, 255);
+	sx127x_apply_rx_cfg(1023, false);
+
+	listen_us = arm(arm_ctx);
+	sym_us = (uint32_t)(((1U << dev_data.rx_cfg.datarate) * 1000U) /
+			    sx127x_bw_khz[dev_data.rx_cfg.bandwidth]);
+	symbols = CLAMP(DIV_ROUND_UP(listen_us, MAX(sym_us, 1U)), 4U, 1023U);
+	Radio.Write(SX127X_REG_LR_MODEMCONFIG2,
+		    (Radio.Read(SX127X_REG_LR_MODEMCONFIG2) & ~0x03U) |
+		    ((symbols >> 8) & 0x03U));
+	Radio.Write(SX127X_REG_LR_SYMBTIMEOUTLSB, (uint8_t)(symbols & 0xFFU));
+	Radio.Rx(0);
+	sx12xx_rx_armed_hook();
+
+	ret = k_poll(&evt, 1, backstop);
+	if (ret < 0) {
+		if (!modem_release(&dev_data)) {
+			/* An RX event is being handled; wait for its result. */
+			k_poll(&evt, 1, K_FOREVER);
+			ret = (done.result < 0) ? done.result : size;
+		} else {
+			ret = -EAGAIN;
+		}
+	} else {
+		ret = (done.result < 0) ? done.result : size;
+	}
+
+	/* Leave the part as lora_config left it: continuous, symbol timeout 0,
+	 * so a following lora_recv/lora_recv_async is not a single receive.
+	 */
+	sx127x_apply_rx_cfg(0, true);
+	return ret;
+}
+#endif
+
 int sx12xx_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user_data)
 {
 	/* Cancel ongoing reception */
@@ -453,6 +551,7 @@ int sx12xx_lora_config(const struct device *dev,
 				  false, true, 0, 0, config->iq_inverted, 4000);
 	} else {
 		dev_data.rx_modem = MODEM_LORA;
+		memcpy(&dev_data.rx_cfg, config, sizeof(dev_data.rx_cfg));
 		/* SYMBOL TIMEOUT 0 FOR A CONTINUOUS WINDOW, not 10.
 		 *
 		 * `Radio.Rx(0)` below is a CONTINUOUS receive, and

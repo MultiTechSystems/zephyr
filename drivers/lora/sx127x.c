@@ -336,6 +336,20 @@ static void sx127x_dio_work_handle(struct k_work *work)
 	(*DioIrq[dio])(NULL);
 }
 
+/*
+ * Called in ISR context on every DIO edge, with the DIO's index, before the
+ * IRQ is handed to the work queue -- the SX127x counterpart of
+ * sx126x_dio1_isr_hook. In LoRa mode DIO0 is TxDone during a transmit and
+ * RxDone during a receive, DIO1 RxTimeout. By the time the work item has run
+ * the loramac-node handler and the waiting thread has returned, the edge is
+ * milliseconds old; an application that needs the instant stamps it here
+ * with its own clock.
+ */
+__weak void sx127x_dio_isr_hook(unsigned int dio)
+{
+	ARG_UNUSED(dio);
+}
+
 static void sx127x_irq_callback(const struct device *dev,
 				struct gpio_callback *cb, uint32_t pins)
 {
@@ -346,6 +360,7 @@ static void sx127x_irq_callback(const struct device *dev,
 	for (i = 0; i < SX127X_MAX_DIO; i++) {
 		if (dev == sx127x_dios[i].port &&
 		    pin == sx127x_dios[i].pin) {
+			sx127x_dio_isr_hook(i);
 			k_work_submit(&dev_data.dio_work[i]);
 		}
 	}
