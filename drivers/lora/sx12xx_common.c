@@ -424,8 +424,13 @@ __weak void sx12xx_rx_armed_hook(void)
 #define SX127X_REG_LR_IRQFLAGS       0x12
 #define SX127X_REG_DIOMAPPING1       0x40
 #define SX127X_IRQ_VALIDHEADER       0x10
-#define SX127X_DIO3_MASK             0x30
-#define SX127X_DIO3_VALIDHEADER      0x10
+/* RegDioMapping1 is DIO0 [7:6], DIO1 [5:4], DIO2 [3:2], DIO3 [1:0]. The
+ * first version wrote 0x10 into [5:4], which set DIO1 to FhssChangeChannel,
+ * silenced RxTimeout, and left every empty timed window running to the
+ * kernel backstop (0 radio timeouts in 789 empty ping slots) while DIO3
+ * stayed CadDone and never fired. */
+#define SX127X_DIO3_MASK             0x03
+#define SX127X_DIO3_VALIDHEADER      0x01
 
 static const uint16_t sx127x_bw_khz[] = { [BW_125_KHZ] = 125, [BW_250_KHZ] = 250,
 					  [BW_500_KHZ] = 500 };
