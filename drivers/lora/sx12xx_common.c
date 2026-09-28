@@ -420,6 +420,7 @@ __weak void sx12xx_rx_armed_hook(void)
  */
 #define SX127X_REG_LR_MODEMCONFIG2   0x1E
 #define SX127X_REG_LR_SYMBTIMEOUTLSB 0x1F
+#define SX127X_REG_LR_IRQFLAGSMASK   0x11
 #define SX127X_REG_LR_IRQFLAGS       0x12
 #define SX127X_REG_DIOMAPPING1       0x40
 #define SX127X_IRQ_VALIDHEADER       0x10
@@ -498,6 +499,13 @@ int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size
 		    (Radio.Read(SX127X_REG_DIOMAPPING1) & ~SX127X_DIO3_MASK) |
 		    SX127X_DIO3_VALIDHEADER);
 	Radio.Rx(0);
+	/* AND UNMASKED, after Rx: loramac-node's SX1272SetRx writes
+	 * RegIrqFlagsMask with RFLR_IRQFLAGS_VALIDHEADER set, which suppresses
+	 * the interrupt the mapping above selects (63 of 63 pings logged no
+	 * ValidHeader with the mapping alone). One SPI write, ~50 us, well inside
+	 * even SF7BW500's 3 ms preamble. */
+	Radio.Write(SX127X_REG_LR_IRQFLAGSMASK,
+		    Radio.Read(SX127X_REG_LR_IRQFLAGSMASK) & ~SX127X_IRQ_VALIDHEADER);
 	sx12xx_rx_armed_hook();
 
 	ret = k_poll(&evt, 1, backstop);
