@@ -420,6 +420,11 @@ __weak void sx12xx_rx_armed_hook(void)
  */
 #define SX127X_REG_LR_MODEMCONFIG2   0x1E
 #define SX127X_REG_LR_SYMBTIMEOUTLSB 0x1F
+#define SX127X_REG_LR_IRQFLAGS       0x12
+#define SX127X_REG_DIOMAPPING1       0x40
+#define SX127X_IRQ_VALIDHEADER       0x10
+#define SX127X_DIO3_MASK             0x30
+#define SX127X_DIO3_VALIDHEADER      0x10
 
 static const uint16_t sx127x_bw_khz[] = { [BW_125_KHZ] = 125, [BW_250_KHZ] = 250,
 					  [BW_500_KHZ] = 500 };
@@ -479,6 +484,19 @@ int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size
 		    (Radio.Read(SX127X_REG_LR_MODEMCONFIG2) & ~0x03U) |
 		    ((symbols >> 8) & 0x03U));
 	Radio.Write(SX127X_REG_LR_SYMBTIMEOUTLSB, (uint8_t)(symbols & 0xFFU));
+	/* DIO3 AS VALIDHEADER, for sx127x_dio_isr_hook(3): the instant the
+	 * explicit header is in, a fixed 8 + 4.25 + 8 symbols after the frame
+	 * began and independent of the payload -- where RxDone trails the last
+	 * symbol by an amount that is not documented. loramac-node's SetRx
+	 * rewrites only DIO0/DIO2, and its DIO3 handler (CAD) clears only
+	 * CADDONE, so the flag is cleared here or the line stays high and the
+	 * next header gives no edge. No CadDone callback is registered, so the
+	 * handler's CadDone(false) is a no-op. Implicit-header frames (beacons)
+	 * raise no ValidHeader. */
+	Radio.Write(SX127X_REG_LR_IRQFLAGS, SX127X_IRQ_VALIDHEADER);
+	Radio.Write(SX127X_REG_DIOMAPPING1,
+		    (Radio.Read(SX127X_REG_DIOMAPPING1) & ~SX127X_DIO3_MASK) |
+		    SX127X_DIO3_VALIDHEADER);
 	Radio.Rx(0);
 	sx12xx_rx_armed_hook();
 
