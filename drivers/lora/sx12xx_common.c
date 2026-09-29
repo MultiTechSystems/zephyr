@@ -297,6 +297,23 @@ int sx12xx_lora_send_async(const struct device *dev, uint8_t *data,
 	return 0;
 }
 
+/* THE RECEIVE LENGTH THE PART IS GIVEN before Radio.Rx(): 255 for an explicit
+ * header (the header carries the length and 255 is only a ceiling), but the
+ * configured implicit length for an implicit-header frame (a Class B beacon).
+ *
+ * This was 255 unconditionally at all four receive starts, which undid
+ * lora_config()'s implicit length on the SX126x: its RadioSetMaxPayloadLength()
+ * writes the LoRa PacketParams PayloadLength, and in implicit mode that IS the
+ * frame length. The part then expected 255-octet beacons -- the xDot ES logged
+ * "search heard 255 octets, not a 23-octet beacon" and never locked one (US915
+ * TP_B BV_000, 2026-09-29) -- while the same firmware locked beacons on the
+ * mDot, whose SX1272 keeps the explicit ceiling (RegPayloadMaxLength) and the
+ * implicit length (RegPayloadLength) in different registers. */
+static uint8_t rx_payload_len(void)
+{
+	return dev_data.rx_cfg.implicit_len ? dev_data.rx_cfg.implicit_len : 255;
+}
+
 int sx12xx_lora_recv(const struct device *dev, uint8_t *data, uint8_t size,
 		     k_timeout_t timeout, int16_t *rssi, int8_t *snr)
 {
@@ -321,7 +338,7 @@ int sx12xx_lora_recv(const struct device *dev, uint8_t *data, uint8_t size,
 	dev_data.rx_params.rssi = rssi;
 	dev_data.rx_params.snr = snr;
 
-	Radio.SetMaxPayloadLength(dev_data.rx_modem, 255);
+	Radio.SetMaxPayloadLength(dev_data.rx_modem, rx_payload_len());
 	Radio.Rx(0);
 
 	ret = k_poll(&evt, 1, timeout);
@@ -372,7 +389,7 @@ int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size
 	dev_data.rx_params.rssi = rssi;
 	dev_data.rx_params.snr = snr;
 
-	Radio.SetMaxPayloadLength(dev_data.rx_modem, 255);
+	Radio.SetMaxPayloadLength(dev_data.rx_modem, rx_payload_len());
 	/* What RadioRx() does, except the timeout: RadioRx() can only program
 	 * 0xFFFFFF (continuous) or a whole-millisecond software timer.
 	 */
@@ -479,7 +496,7 @@ int sx12xx_lora_recv_timed(const struct device *dev, uint8_t *data, uint8_t size
 	 * costs SPI time happens here, before the caller's instant; the symbol
 	 * timeout is written after it, from the duration arm() returns.
 	 */
-	Radio.SetMaxPayloadLength(dev_data.rx_modem, 255);
+	Radio.SetMaxPayloadLength(dev_data.rx_modem, rx_payload_len());
 	sx127x_apply_rx_cfg(1023, false);
 
 	listen_us = arm(arm_ctx);
@@ -555,7 +572,7 @@ int sx12xx_lora_recv_async(const struct device *dev, lora_recv_cb cb, void *user
 	dev_data.async_user_data = user_data;
 
 	/* Start reception */
-	Radio.SetMaxPayloadLength(dev_data.rx_modem, 255);
+	Radio.SetMaxPayloadLength(dev_data.rx_modem, rx_payload_len());
 	Radio.Rx(0);
 
 	return 0;
